@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="pt">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light">
+    <meta name="theme-color" content="#073f46">
+    <title>{{ app_name or "SIGCP" }} · {{ app_full_name or "Sistema Integrado de Gestão do Contingente Português" }}</title>
+    <link rel="icon" href="/favicon.ico">
+    <link rel="stylesheet" href="/static/styles.css?v=20260808-cash-modal-dish-columns">
+</head>
+<body>
+    <svg class="svg-sprite" aria-hidden="true">
+        <symbol id="i-calendar" viewBox="0 0 24 24"><path d="M7 2v3M17 2v3M3.5 9h17M5.5 4h13a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z"/><path d="M7 13h2M11 13h2M15 13h2M7 17h2M11 17h2"/></symbol>
+        <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></symbol>
+        <symbol id="i-umbrella" viewBox="0 0 24 24"><path d="M22 12a10 10 0 0 0-20 0h20Z"/><path d="M12 2v18a2 2 0 0 0 4 0"/></symbol>
+        <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></symbol>
+        <symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
+        <symbol id="i-plane" viewBox="0 0 24 24"><path d="M22 2 9.5 14.5M22 2l-8 20-4.5-7.5L2 10l20-8Z"/></symbol>
+        <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06a1.7 1.7 0 0 0-1.88-.34 1.7 1.7 0 0 0-1 1.55V21h-4v-.08a1.7 1.7 0 0 0-1-1.55 1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.55-1H3v-4h.08A1.7 1.7 0 0 0 4.63 9a1.7 1.7 0 0 0-.34-1.88l-.06-.06 2.83-2.83.06.06A1.7 1.7 0 0 0 9 4.63a1.7 1.7 0 0 0 1-1.55V3h4v.08A1.7 1.7 0 0 0 15 4.63a1.7 1.7 0 0 0 1.88-.34l.06-.06 2.83 2.83-.06.06A1.7 1.7 0 0 0 19.37 9a1.7 1.7 0 0 0 1.55 1H21v4h-.08a1.7 1.7 0 0 0-1.52 1Z"/></symbol>
+        <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M4 21h16"/></symbol>
+        <symbol id="i-print" viewBox="0 0 24 24"><path d="M6 9V3h12v6M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="7"/></symbol>
+        <symbol id="i-lock" viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></symbol>
+        <symbol id="i-unlock" viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 7.5-2"/></symbol>
+        <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+        <symbol id="i-edit" viewBox="0 0 24 24"><path d="m14 4 6 6L8 22H2v-6L14 4Z"/><path d="m12 6 6 6"/></symbol>
+        <symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18M8 6V3h8v3M19 6l-1 15H6L5 6M10 10v7M14 10v7"/></symbol>
+        <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+        <symbol id="i-left" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
+        <symbol id="i-right" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+        <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></symbol>
+        <symbol id="i-logout" viewBox="0 0 24 24"><path d="M10 17l5-5-5-5M15 12H3M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/></symbol>
+        <symbol id="i-power" viewBox="0 0 24 24"><path d="M12 2v10M18.4 5.6a9 9 0 1 1-12.8 0"/></symbol>
+        <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></symbol>
+        <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+        <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
+        <symbol id="i-alert" viewBox="0 0 24 24"><path d="M10.3 3.7 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.7a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4M12 17h.01"/></symbol>
+        <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 11v6M12 7h.01"/></symbol>
+        <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></symbol>
+        <symbol id="i-coins" viewBox="0 0 24 24"><ellipse cx="8" cy="6" rx="6" ry="3"/><path d="M2 6v4c0 1.7 2.7 3 6 3s6-1.3 6-3V6M2 10v4c0 1.7 2.7 3 6 3 1 0 2-.1 2.8-.4"/><path d="M14 11c.6-.1 1.3-.2 2-.2 3.3 0 6 1.3 6 3s-2.7 3-6 3-6-1.3-6-3c0-.4.2-.8.5-1.2"/><path d="M10 14v4c0 1.7 2.7 3 6 3s6-1.3 6-3v-4"/></symbol>
+        <symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></symbol>
+    </svg>
+
+    <noscript>
+        <div class="noscript">Esta aplicação precisa de JavaScript ativo no browser.</div>
+    </noscript>
+
+    <section id="login-screen" class="login-screen">
+        <div class="login-atmosphere"></div>
+        <div class="login-brand">
+            <div class="login-mission-logo">
+                <img src="/assets/logo_eutm_rca_prt.png" alt="Logótipo do Contingente Português na EUTM RCA">
+            </div>
+            <p class="eyebrow">CONTINGENTE PORTUGUÊS · EUTM RCA</p>
+            <h1>SIGCP</h1>
+            <p class="login-system-name">Sistema Integrado de Gestão do Contingente Português</p>
+            <p class="login-lead">Uma plataforma única para gerir o contingente.</p>
+            <div class="login-feature-row">
+                <span><svg><use href="#i-calendar"/></svg> Planeamento</span>
+                <span><svg><use href="#i-grid"/></svg> Controlo individual</span>
+                <span><svg><use href="#i-download"/></svg> Documentos</span>
+            </div>
+        </div>
+        <div class="login-panel-wrap">
+            <form id="login-form" class="login-card" autocomplete="on">
+                <div class="login-mobile-brand">
+                    <div class="login-mobile-logo"><img src="/assets/logo_eutm_rca_prt.png" alt=""></div>
+                    <div><strong>SIGCP</strong><small>Sistema Integrado de Gestão do Contingente Português</small></div>
+                </div>
+                <p class="eyebrow eyebrow--dark">ÁREA RESERVADA</p>
+                <h2>Bem-vindo</h2>
+                <p class="muted">Introduz as suas credenciais para continuar.</p>
+                <label class="field">
+                    <span>Utilizador / NIM</span>
+                    <span class="input-shell">
+                        <svg><use href="#i-user"/></svg>
+                        <input id="login-nim" name="nim" autocomplete="username" required autofocus>
+                    </span>
+                </label>
+                <label class="field">
+                    <span>Password</span>
+                    <span class="input-shell">
+                        <svg><use href="#i-lock"/></svg>
+                        <input id="login-password" name="password" type="password" autocomplete="current-password" required>
+                    </span>
+                </label>
+                <div id="login-error" class="form-error" role="alert"></div>
+                <button class="btn btn--primary btn--large btn--block" type="submit">
+                    <span>Entrar na aplicação</span>
+                    <svg><use href="#i-right"/></svg>
+                </button>
+                <p class="login-footnote">Ligação local protegida · Os dados permanecem neste computador</p>
+            </form>
+        </div>
+    </section>
+
+    <div id="app-shell" class="app-shell hidden">
+        <div id="sidebar-overlay" class="sidebar-overlay"></div>
+        <aside id="sidebar" class="sidebar">
+            <div class="sidebar-brand">
+                <div class="brand-mark"><img src="/assets/favicon.ico" alt=""></div>
+                <div><strong>SIGCP</strong><span>Sistema Integrado de Gestão do Contingente Português</span></div>
+            </div>
+            <nav id="main-nav" class="main-nav" aria-label="Navegação principal">
+                <button class="nav-item active" data-page="dashboard">
+                    <svg><use href="#i-grid"/></svg><span>Dashboard</span>
+                </button>
+                <p class="nav-caption">WELFARE</p>
+                <button class="nav-item" data-page="calendar">
+                    <svg><use href="#i-calendar"/></svg><span>Calendário</span>
+                </button>
+                <button class="nav-item" data-page="individual" data-permission="individual">
+                    <svg><use href="#i-grid"/></svg><span>Welfare Individual</span>
+                </button>
+                <button class="nav-item" data-page="cash" data-permission="caixa">
+                    <svg><use href="#i-coins"/></svg><span>Gestão Caixa</span>
+                </button>
+                <p class="nav-caption">FÉRIAS</p>
+                <button class="nav-item" data-page="my-vacations" data-permission="ferias_privadas">
+                    <svg><use href="#i-umbrella"/></svg><span>As minhas férias</span><b class="nav-notification-count hidden" data-vacation-notification-count="pessoal"></b>
+                </button>
+                <button class="nav-item" data-page="vacations" data-permission="ferias">
+                    <svg><use href="#i-calendar"/></svg><span>Gestão de Férias</span><b class="nav-notification-count hidden" data-vacation-notification-count="gestao"></b>
+                </button>
+                <p class="nav-caption" data-permission="pessoal">PESSOAL</p>
+                <button class="nav-item" data-page="personnel" data-permission="pessoal">
+                    <svg><use href="#i-users"/></svg><span>Pessoal</span>
+                </button>
+                <p class="nav-caption" data-permission="admin">SISTEMA</p>
+                <button class="nav-item" data-page="admin" data-permission="admin">
+                    <svg><use href="#i-settings"/></svg><span>Administração</span>
+                </button>
+            </nav>
+            <div class="sidebar-bottom">
+                <button id="sidebar-profile" class="sidebar-profile">
+                    <span id="sidebar-avatar" class="avatar">U</span>
+                    <span class="sidebar-profile-text"><strong id="sidebar-user">Utilizador</strong><small id="sidebar-role">Perfil</small></span>
+                    <svg><use href="#i-more"/></svg>
+                </button>
+                <div id="profile-menu" class="profile-menu hidden">
+                    <button data-action="profile"><svg><use href="#i-user"/></svg> O meu perfil</button>
+                    <button data-action="logout"><svg><use href="#i-logout"/></svg> Terminar sessão</button>
+                    <button data-action="shutdown" class="danger-text"><svg><use href="#i-power"/></svg> Encerrar aplicação</button>
+                </div>
+                <div class="version-line"><span class="status-dot"></span><span id="app-version">SIGCP v{{ app_version or '2.2' }} Web @ 2026</span></div>
+            </div>
+        </aside>
+
+        <div class="workspace">
+            <header class="topbar">
+                <button id="menu-toggle" class="icon-btn mobile-only" aria-label="Abrir menu"><svg><use href="#i-menu"/></svg></button>
+                <div>
+                    <p id="page-eyebrow" class="eyebrow eyebrow--dark">VISÃO GERAL</p>
+                    <h1 id="page-title">Dashboard</h1>
+                </div>
+                <div id="topbar-actions" class="topbar-actions"></div>
+            </header>
+            <main id="main-content" class="main-content" tabindex="-1"></main>
+        </div>
+    </div>
+
+    <div id="loading" class="loading-overlay hidden" aria-live="polite">
+        <div class="loader"></div><span>A processar…</span>
+    </div>
+    <div id="modal-root"></div>
+    <div id="toast-region" class="toast-region" aria-live="polite"></div>
+
+    <script src="/static/app.js?v=20260808-cash-dashboard-balance" defer></script>
+</body>
+</html>

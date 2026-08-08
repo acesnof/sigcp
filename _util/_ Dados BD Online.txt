@@ -1,0 +1,30 @@
+DADOS SUPABASE
+
+Site: https://supabase.com/dashboard/sign-in
+
+email: eutmrcaciscell@gmail.com
+password: Porto12345##
+
+
+Projeto: SIGCP
+Password: C0nt1ng3nt3tug@
+
+
+__________________________
+
+Para mudar da base de dados local (partilha) para a base de dados online deve:
+
+1 - Entrar como SuperUser.
+
+2 - Na administração deve fazer Exportação JSON dos dados da base de dados local. Assim fica com os dados mais recentes para depois os importar para a base de dados online.
+
+3 - Muda para Base de Dados Online.
+
+4 - Termina sessão e volta a entrar como SuperUser.
+
+5 - Vai à administração e importa o JSON. Assim a base de dados online fica com os dados mais recentes.
+
+6 - Está pronto.
+
+
+Sem internet, como é obvio, fica sem acesso à base de dados. 

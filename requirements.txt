@@ -1,0 +1,6 @@
+Pillow
+reportlab
+openpyxl
+python-docx
+pyinstaller
+Flask>=3.1,<4

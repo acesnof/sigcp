@@ -1,0 +1,5 @@
+A conta de SuperUser não precisa de base de dados para entrar e não dá para mudar estes dados. 
+
+Utilizador/NIM: admin
+
+Password: Bangui123#
