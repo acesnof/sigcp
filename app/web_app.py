@@ -596,7 +596,7 @@ def create_web_app():
         if (
             request.path.startswith("/api/")
             and request.method in audit.VALID_METHODS
-            and request.endpoint not in {"api_browser_lifecycle", "api_login"}
+            and request.endpoint != "api_browser_lifecycle"
             and 200 <= response.status_code < 400
         ):
             try:

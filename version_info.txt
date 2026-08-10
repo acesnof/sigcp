@@ -1,7 +1,7 @@
 VSVersionInfo(
   ffi=FixedFileInfo(
-    filevers=(2, 5, 1, 0),
-    prodvers=(2, 5, 1, 0),
+    filevers=(2, 5, 2, 0),
+    prodvers=(2, 5, 2, 0),
     mask=0x3f,
     flags=0x0,
     OS=0x40004,
@@ -16,11 +16,11 @@ VSVersionInfo(
         [
           StringStruct(u'CompanyName', u'Contingente Português'),
           StringStruct(u'FileDescription', u'Sistema Integrado de Gestão do Contingente Português'),
-          StringStruct(u'FileVersion', u'2.5.1'),
+          StringStruct(u'FileVersion', u'2.5.2'),
           StringStruct(u'InternalName', u'SIGCP'),
           StringStruct(u'OriginalFilename', u'SIGCP.exe'),
           StringStruct(u'ProductName', u'SIGCP'),
-          StringStruct(u'ProductVersion', u'2.5.1')
+          StringStruct(u'ProductVersion', u'2.5.2')
         ]
       )
     ]),

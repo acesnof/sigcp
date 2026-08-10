@@ -253,6 +253,40 @@ class WebAppTest(unittest.TestCase):
         self.assertTrue(accepted.get_json()["backup"]["ok"])
         backup.assert_called_once_with()
 
+    def test_successful_login_is_audited(self):
+        self.create_user("audit_login")
+
+        denied = self.client.post(
+            "/api/login",
+            json={"nim": "audit_login", "password": "incorreta"},
+        )
+        self.assertEqual(401, denied.status_code)
+        self.assertIsNone(
+            db.db_one(
+                "SELECT id FROM auditoria WHERE entidade='api_login' "
+                "AND utilizador_nim=?",
+                ("audit_login",),
+            )
+        )
+
+        accepted = self.client.post(
+            "/api/login",
+            json={"nim": "audit_login", "password": "Teste123!"},
+        )
+        self.assertEqual(200, accepted.status_code)
+
+        entry = db.db_one(
+            "SELECT * FROM auditoria WHERE entidade='api_login' "
+            "AND utilizador_nim=? ORDER BY id DESC",
+            ("audit_login",),
+        )
+        self.assertIsNotNone(entry)
+        self.assertEqual("Início de sessão", entry["acao"])
+        self.assertEqual("POST", entry["metodo"])
+        self.assertEqual("/api/login", entry["rota"])
+        self.assertNotIn("Teste123!", entry["detalhes"])
+        self.assertIn("[OCULTO]", entry["detalhes"])
+
     def test_person_position_number_is_created_and_updated(self):
         csrf = self.login()
         headers = {"X-CSRF-Token": csrf}
