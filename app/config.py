@@ -9,7 +9,7 @@ from urllib.parse import quote
 
 APP_NAME = "SIGCP"
 APP_FULL_NAME = "Sistema Integrado de Gestão do Contingente Português"
-APP_VERSION = "2.5.2"
+APP_VERSION = "2.5.3"
 LEGACY_APP_NAME = "PRT Welfare"
 
 
@@ -307,9 +307,26 @@ MESES_PT = {
 REFEICOES = ["Almoço", "Jantar"]
 
 POSTOS = [
-    "OF-6", "OF-5", "OF-4", "OF-3", "OF-2", "OF-1",
+    "OF-5", "OF-4", "OF-3", "OF-2", "OF-1",
     "OR-9", "OR-8", "OR-7", "OR-6", "OR-5", "OR-4", "OR-3", "OR-2", "OR-1"
 ]
+
+POSTOS_PORTUGAL = [
+    "COR", "TCOR", "MAJ", "CAP", "TEN", "ALF", "SMOR", "SCH", "SAJ",
+    "1SARG", "2SARG", "CBADJ", "1CB", "2CB", "SOLD",
+]
+
+POSTO_PORTUGAL_PADRAO = {
+    "OF-5": "COR", "OF-4": "TCOR", "OF-3": "MAJ", "OF-2": "CAP",
+    "OF-1": "TEN", "OR-9": "SCH", "OR-8": "SAJ", "OR-7": "1SARG",
+    "OR-6": "2SARG", "OR-5": "CBADJ", "OR-4": "", "OR-3": "1CB",
+    "OR-2": "2CB", "OR-1": "SOLD",
+}
+
+
+def posto_apresentacao(pessoa):
+    """Posto a apresentar na aplicação, com fallback para o posto da missão."""
+    return str(pessoa.get("posto_portugal") or pessoa.get("posto") or "").strip()
 
 TIPOS_ACESSO = [
     "Administrador",

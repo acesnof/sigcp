@@ -40,6 +40,8 @@ from app.config import (
     MASTER_NIM,
     MASTER_PASSWORD,
     POSTOS,
+    POSTOS_PORTUGAL,
+    POSTO_PORTUGAL_PADRAO,
     TIPOS_ACESSO,
     TIPOS_ACESSO_DESCRICAO,
     TIPOS_WELFARE,
@@ -125,8 +127,21 @@ def _resource_dir():
     return Path(__file__).resolve().parent
 
 
+def _postos_para_apresentacao(value):
+    """Troca o posto apenas nos payloads da aplicação; os geradores usam os dados crus."""
+    if isinstance(value, list):
+        return [_postos_para_apresentacao(item) for item in value]
+    if isinstance(value, dict):
+        result = {key: _postos_para_apresentacao(item) for key, item in value.items()}
+        if "posto" in result and "posto_portugal" in result:
+            result.setdefault("posto_missao", result.get("posto") or "")
+            result["posto"] = result.get("posto_portugal") or result.get("posto") or ""
+        return result
+    return value
+
+
 def _json_ok(**dados):
-    return jsonify({"ok": True, **dados})
+    return jsonify(_postos_para_apresentacao({"ok": True, **dados}))
 
 
 def _body():
@@ -295,7 +310,7 @@ def _pode_trancar_individual(user):
 
 
 def _identificacao(user):
-    posto = (user.get("posto") or "").strip()
+    posto = (user.get("posto_portugal") or user.get("posto") or "").strip()
     sobrenome = (user.get("sobrenome") or "").strip().upper()
     nome = (user.get("nome") or "").strip().upper()
     return f"{posto} {sobrenome or nome}".strip() or user.get("nim") or "Utilizador"
@@ -311,6 +326,7 @@ def _safe_user(user):
         "id": user["id"],
         "nim": user.get("nim") or "",
         "posto": user.get("posto") or "",
+        "posto_portugal": user.get("posto_portugal") or "",
         "nome": user.get("nome") or "",
         "sobrenome": user.get("sobrenome") or "",
         "data_nascimento": user.get("data_nascimento") or "",
@@ -858,6 +874,8 @@ def create_web_app():
             },
             config={
                 "postos": POSTOS,
+                "postos_portugal": POSTOS_PORTUGAL,
+                "posto_portugal_padrao": POSTO_PORTUGAL_PADRAO,
                 "tipos_acesso": TIPOS_ACESSO,
                 "tipos_acesso_descricao": TIPOS_ACESSO_DESCRICAO,
                 "tipos_welfare": list(TIPOS_WELFARE),
@@ -893,7 +911,7 @@ def create_web_app():
         aniversarios = {}
         pessoas = db_rows(
             """
-            SELECT id, nim, posto, nome, sobrenome, data_nascimento,
+            SELECT id, nim, posto, posto_portugal, nome, sobrenome, data_nascimento,
                    data_chegada, data_partida, antiguidade
             FROM utilizadores
             WHERE master=0 AND COALESCE(data_nascimento, '')<>''
@@ -1095,7 +1113,7 @@ def create_web_app():
         report["previsao_mes"] = (service.para_payload().get("totais") or {}).get("caixa", 0)
         hoje = date.today().isoformat()
         pessoas = db_rows("""
-            SELECT id, nim, posto, nome, sobrenome, antiguidade
+            SELECT id, nim, posto, posto_portugal, nome, sobrenome, antiguidade
             FROM utilizadores
             WHERE master=0
               AND COALESCE(data_chegada, '')<>''
@@ -1164,7 +1182,7 @@ def create_web_app():
         atribuidos = {m["id"] for team in teams for m in team["membros"]}
         hoje = date.today().isoformat()
         pessoas = db_rows("""
-            SELECT id, nim, posto, nome, sobrenome, antiguidade,
+            SELECT id, nim, posto, posto_portugal, nome, sobrenome, antiguidade,
                    data_chegada, data_partida
             FROM utilizadores
             WHERE master=0
@@ -1475,6 +1493,9 @@ def create_web_app():
         posto = str(dados.get("posto") or "").strip()
         if posto and posto not in POSTOS:
             raise ApiError("Posto inválido.")
+        posto_portugal = str(dados.get("posto_portugal") or "").strip()
+        if posto_portugal and posto_portugal not in POSTOS_PORTUGAL:
+            raise ApiError("Posto português inválido.")
         antiguidade = _data_iso(dados.get("antiguidade"))
         data_nascimento = _data_iso(dados.get("data_nascimento"))
         chegada = _data_hora(dados.get("data_chegada"))
@@ -1533,6 +1554,7 @@ def create_web_app():
         valores = (
             nim,
             posto,
+            posto_portugal,
             antiguidade,
             snr,
             snr_substituto,
@@ -1559,7 +1581,7 @@ def create_web_app():
                     db_execute(
                         """
                         UPDATE utilizadores SET
-                            nim=?, posto=?, antiguidade=?, snr=?,
+                            nim=?, posto=?, posto_portugal=?, antiguidade=?, snr=?,
                             snr_substituto=?, snr_substituto_inicio=?, snr_substituto_fim=?,
                             telemovel_servico=?, responsavel_welfare=?,
                             area_funcional=?, posicao_numero=?, ferias_direito_override=?,
@@ -1574,7 +1596,7 @@ def create_web_app():
                     db_execute(
                         """
                         UPDATE utilizadores SET
-                            nim=?, posto=?, antiguidade=?, snr=?,
+                            nim=?, posto=?, posto_portugal=?, antiguidade=?, snr=?,
                             snr_substituto=?, snr_substituto_inicio=?, snr_substituto_fim=?,
                             telemovel_servico=?, responsavel_welfare=?,
                             area_funcional=?, posicao_numero=?, ferias_direito_override=?,
@@ -1591,7 +1613,7 @@ def create_web_app():
                 novo_id = db_execute_return_id(
                     """
                     INSERT INTO utilizadores (
-                        nim, posto, antiguidade, snr,
+                        nim, posto, posto_portugal, antiguidade, snr,
                         snr_substituto, snr_substituto_inicio, snr_substituto_fim,
                         telemovel_servico,
                         responsavel_welfare, area_funcional,
@@ -1599,7 +1621,7 @@ def create_web_app():
                         nome, sobrenome, data_nascimento, data_chegada,
                         data_partida, tipo_acesso, password_salt,
                         password_hash, master
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
                     """,
                     valores + (salt, pwd_hash),
                 )

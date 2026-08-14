@@ -345,7 +345,7 @@ def _member(user_id):
 
 
 def _identification(member):
-    rank = str(member.get("posto") or "").strip()
+    rank = str(member.get("posto_portugal") or member.get("posto") or "").strip()
     surname = str(member.get("sobrenome") or "").strip().upper()
     name = str(member.get("nome") or "").strip().upper()
     return f"{rank} {surname or name}".strip() or str(member.get("nim") or "Utilizador")
@@ -1255,7 +1255,7 @@ def _history_map(ids):
     placeholders = ",".join("?" for _ in ids)
     rows = db.db_rows(
         f"""
-        SELECT h.*, u.posto AS ator_posto, u.nome AS ator_nome,
+        SELECT h.*, u.posto AS ator_posto, u.posto_portugal AS ator_posto_portugal, u.nome AS ator_nome,
                u.sobrenome AS ator_sobrenome, u.nim AS ator_nim
         FROM ferias_historico h
         LEFT JOIN utilizadores u ON u.id = h.utilizador_id
@@ -1270,8 +1270,9 @@ def _history_map(ids):
             row["detalhes"] = json.loads(row.get("detalhes") or "{}")
         except json.JSONDecodeError:
             row["detalhes"] = {}
+        ator_posto = row.pop("ator_posto", "") or ""
         actor = {
-            "posto": row.pop("ator_posto", "") or "",
+            "posto": row.pop("ator_posto_portugal", "") or ator_posto,
             "nome": row.pop("ator_nome", "") or "",
             "sobrenome": row.pop("ator_sobrenome", "") or "",
             "nim": row.pop("ator_nim", "") or "",
@@ -1322,7 +1323,7 @@ def list_requests(
     clause = f"WHERE {' AND '.join(where)}" if where else ""
     rows = db.db_rows(
         f"""
-        SELECT f.*, u.nim, u.posto, u.nome, u.sobrenome, u.area_funcional,
+        SELECT f.*, u.nim, u.posto, u.posto_portugal, u.nome, u.sobrenome, u.area_funcional,
                u.posicao_numero,
                u.data_chegada AS missao_inicio, u.data_partida AS missao_fim,
                u.ferias_direito_override, u.missao_prorrogada
@@ -1388,6 +1389,7 @@ def safe_member(member):
         "id": member["id"],
         "nim": member.get("nim") or "",
         "posto": member.get("posto") or "",
+        "posto_portugal": member.get("posto_portugal") or "",
         "nome": member.get("nome") or "",
         "sobrenome": member.get("sobrenome") or "",
         "identificacao": _identification(member),

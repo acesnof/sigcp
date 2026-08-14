@@ -177,6 +177,7 @@ class IndividualService(WelfareIndividualWindow):
                     "id": user["id"],
                     "nim": user.get("nim") or "",
                     "posto": user.get("posto") or "",
+                    "posto_portugal": user.get("posto_portugal") or "",
                     "nome": user.get("nome") or "",
                     "sobrenome": user.get("sobrenome") or "",
                     "identificacao": self.identificacao(user),
@@ -324,6 +325,7 @@ def calcular_distribuicao_xfa(
             {
                 "id": user["id"],
                 "posto": (user.get("posto") or "").strip(),
+                "posto_portugal": (user.get("posto_portugal") or "").strip(),
                 "sobrenome": (user.get("sobrenome") or "").strip().upper(),
                 "nome": (user.get("nome") or "").strip().upper(),
                 "welfare": welfare,

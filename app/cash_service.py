@@ -24,7 +24,8 @@ def _money(value):
 
 
 def _actor_name(user):
-    return " ".join(str(user.get(key) or "").strip() for key in ("posto", "nome", "sobrenome")).strip() or str(user.get("nim") or "")
+    rank = str(user.get("posto_portugal") or user.get("posto") or "").strip()
+    return " ".join(filter(None, (rank, str(user.get("nome") or "").strip(), str(user.get("sobrenome") or "").strip()))).strip() or str(user.get("nim") or "")
 
 
 def save(data, user, movement_id=None):

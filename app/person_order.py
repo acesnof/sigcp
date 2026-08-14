@@ -5,7 +5,9 @@ from datetime import date, datetime, time
 from app.config import POSTOS
 
 
-POSTO_ORDER = {posto: indice for indice, posto in enumerate(POSTOS)}
+# OF-6 deixou de estar disponível para novos perfis, mas continua reconhecido
+# para ordenar corretamente bases de dados antigas.
+POSTO_ORDER = {posto: indice for indice, posto in enumerate(["OF-6", *POSTOS])}
 
 
 def person_still_in_mission(person, reference=None):

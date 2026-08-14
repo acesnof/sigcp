@@ -1435,7 +1435,8 @@
                 ${master ? `<div class="info-banner" style="margin-bottom:16px">${icon("lock")}<span>O utilizador mestre está protegido e não pode ser alterado.</span></div>` : ""}
                 <div class="form-grid form-grid--3 people-form-grid">
                     <label class="field"><span class="required">NIM / Utilizador</span><input name="nim" value="${attr(user?.nim || "")}" ${lockedProfile ? "disabled" : ""} required></label>
-                    <label class="field"><span>Posto</span><select name="posto" ${lockedProfile ? "disabled" : ""}>${state.boot.config.postos.map((posto) => `<option ${posto === user?.posto ? "selected" : ""}>${esc(posto)}</option>`).join("")}</select></label>
+                    <label class="field"><span>Posto da missão</span><select name="posto" ${lockedProfile ? "disabled" : ""}>${state.boot.config.postos.map((posto) => `<option ${posto === (user?.posto_missao || user?.posto) ? "selected" : ""}>${esc(posto)}</option>`).join("")}</select></label>
+                    <label class="field"><span>Posto português</span><select name="posto_portugal" ${lockedProfile ? "disabled" : ""}><option value="">Sem correspondência</option>${state.boot.config.postos_portugal.map((posto) => `<option ${posto === user?.posto_portugal ? "selected" : ""}>${esc(posto)}</option>`).join("")}</select></label>
                     <label class="field"><span>Antiguidade</span><input name="antiguidade" type="date" value="${attr(String(user?.antiguidade || "").slice(0,10))}" ${lockedProfile ? "disabled" : ""}></label>
                     <label class="field"><span>Nome</span><input name="nome" value="${attr(user?.nome || "")}" ${lockedProfile ? "disabled" : ""}></label>
                     <label class="field"><span>Sobrenome</span><input name="sobrenome" value="${attr(user?.sobrenome || "")}" ${lockedProfile ? "disabled" : ""}></label>
@@ -1467,6 +1468,12 @@
                 <button class="btn btn--secondary" data-modal-close>Fechar</button>
                 ${master || (!canEditPerson && !canAssignSubstitute) ? "" : `<button class="btn btn--primary" type="submit" form="user-form">${icon("check")} Guardar</button>`}`,
             onOpen(modal) {
+                const missionRank = $('[name="posto"]', modal);
+                const portugueseRank = $('[name="posto_portugal"]', modal);
+                missionRank?.addEventListener("change", () => {
+                    portugueseRank.value = state.boot.config.posto_portugal_padrao[missionRank.value] || "";
+                });
+                if (!editing && missionRank && portugueseRank) portugueseRank.value = state.boot.config.posto_portugal_padrao[missionRank.value] || "";
                 $("#user-form", modal).addEventListener("submit", async (event) => {
                     event.preventDefault();
                     const form = new FormData(event.currentTarget);
@@ -1485,7 +1492,7 @@
                         return;
                     }
                     const payload = {
-                        nim: form.get("nim"), posto: form.get("posto"), antiguidade: form.get("antiguidade"),
+                        nim: form.get("nim"), posto: form.get("posto"), posto_portugal: form.get("posto_portugal"), antiguidade: form.get("antiguidade"),
                         nome: form.get("nome"), sobrenome: form.get("sobrenome"),
                         data_nascimento: form.get("data_nascimento"),
                         data_chegada: form.get("data_chegada"), data_partida: form.get("data_partida"),
@@ -1549,7 +1556,7 @@
             ["calendar", "Direito", summary.direito, "Dias calculados para a missão"],
             ["plane", "Planeados", summary.planeados, `${summary.periodos} período(s)`],
             ["check", "Aprovados", summary.aprovados, "Dias de férias autorizados"],
-            ["coins", "Disponíveis", summary.disponiveis, `${summary.pendentes} ação(ões) pendente(s)`],
+            ["coins", "Dias para Guia de Marcha", summary.disponiveis, `${summary.pendentes} ação(ões) pendente(s)`],
         ];
         return `<div class="stats-grid vacation-stats">${items.map((item, index) => `<article class="stat-card ${index === 3 && Number(item[2]) > 0 ? "stat-card--amber" : index === 2 ? "stat-card--green" : ""}">
             <span class="stat-icon">${icon(item[0])}</span><div><small>${esc(item[1])}</small><strong>${item[2] ?? "—"}</strong><span>${esc(item[3])}</span></div>
@@ -1836,10 +1843,10 @@
     function drawVacationPeople(root, data) {
         root.innerHTML = `<div class="card">
             <div class="card-header"><div><h2>Pessoal e direitos</h2><p>Cálculo 30/360, missão, área funcional e períodos planeados.</p></div><span class="badge badge--teal">${data.pessoas.length} pessoas</span></div>
-            <div class="table-wrap"><table class="data-table vacation-people-table"><thead><tr><th>Pessoa</th><th>Área</th><th>Posição N.º</th><th>Missão</th><th>Direito</th><th>Planeados</th><th>Aprovados</th><th>Disponíveis</th><th>Períodos</th><th></th></tr></thead>
+            <div class="table-wrap"><table class="data-table vacation-people-table"><thead><tr><th>Pessoa</th><th>Área</th><th>Posição N.º</th><th>Missão</th><th>Direito</th><th>Planeados</th><th class="vacation-days-gm">Dias para GM</th><th>Períodos</th><th></th></tr></thead>
             <tbody>${data.pessoas.map((person) => `<tr><td><div class="person-cell"><span class="avatar">${esc(initials(person))}</span><span><strong>${esc(person.identificacao)}</strong><small>${esc(person.nim)}${person.snr_substituto ? ` · Subst. SNR: ${fmtDate(person.snr_substituto_inicio)}–${fmtDate(person.snr_substituto_fim)}` : ""}</small></span></div></td>
                 <td>${esc(person.area_funcional)}</td><td>${esc(person.posicao_numero || "—")}</td><td><span class="date-pair">${fmtDate(person.data_chegada)}<small>até</small>${fmtDate(person.data_partida)}</span></td>
-                <td><strong>${person.resumo.direito ?? "—"}</strong></td><td>${person.resumo.planeados}</td><td>${person.resumo.aprovados}</td><td><strong class="${Number(person.resumo.disponiveis) < 0 ? "danger-text" : ""}">${person.resumo.disponiveis ?? "—"}</strong></td><td>${person.resumo.periodos}</td>
+                <td><strong>${person.resumo.direito ?? "—"}</strong></td><td>${person.resumo.planeados}</td><td class="vacation-days-gm"><strong class="${Number(person.resumo.disponiveis) < 0 ? "danger-text" : ""}">${person.resumo.disponiveis ?? "—"}</strong></td><td>${person.resumo.periodos}</td>
                 <td class="actions-cell"><button class="icon-btn" data-action="vacation-person-edit" data-id="${person.id}" title="Editar dados de férias">${icon("edit")}</button></td></tr>`).join("")}</tbody></table></div>
         </div>`;
     }
@@ -2008,7 +2015,7 @@
                 ${vacationPrintField("Total de dias Férias (manual)", person.ferias_direito_override ?? "Automático")}
                 ${vacationPrintField("Direito calculado", summary.direito ?? "—")}
                 ${vacationPrintField("Planeados / aprovados", `${summary.planeados ?? 0} / ${summary.aprovados ?? 0}`)}
-                ${vacationPrintField("Disponíveis", summary.disponiveis ?? "—")}
+                ${vacationPrintField("Dias para Guia de Marcha", summary.disponiveis ?? "—")}
                 ${vacationPrintField("Notas de férias", person.notas_ferias || "—", "vacation-print-field--full")}
             </div>
             <table class="vacation-print-periods">

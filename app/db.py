@@ -89,6 +89,7 @@ def init_db():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             nim TEXT NOT NULL UNIQUE,
             posto TEXT,
+            posto_portugal TEXT,
             nome TEXT,
             sobrenome TEXT,
             data_nascimento TEXT,
@@ -113,6 +114,13 @@ def init_db():
     # Migração automática para bases de dados criadas antes do campo antiguidade.
     cur.execute("PRAGMA table_info(utilizadores)")
     colunas_utilizadores = {row[1] for row in cur.fetchall()}
+    if "posto_portugal" not in colunas_utilizadores:
+        cur.execute("ALTER TABLE utilizadores ADD COLUMN posto_portugal TEXT")
+        for posto, posto_pt in app_config.POSTO_PORTUGAL_PADRAO.items():
+            cur.execute(
+                "UPDATE utilizadores SET posto_portugal=? WHERE posto=? AND master=0",
+                (posto_pt, posto),
+            )
     if "data_nascimento" not in colunas_utilizadores:
         cur.execute("ALTER TABLE utilizadores ADD COLUMN data_nascimento TEXT")
     if "antiguidade" not in colunas_utilizadores:
@@ -1004,7 +1012,7 @@ def get_teams():
     teams = db_rows("SELECT id, nome, criado_em FROM teams ORDER BY nome COLLATE NOCASE")
     hoje = datetime.now().date().isoformat()
     membros = db_rows("""
-        SELECT tm.team_id, u.id, u.nim, u.posto, u.nome, u.sobrenome, u.antiguidade,
+        SELECT tm.team_id, u.id, u.nim, u.posto, u.posto_portugal, u.nome, u.sobrenome, u.antiguidade,
                u.data_chegada, u.data_partida
         FROM team_membros tm
         JOIN utilizadores u ON u.id=tm.utilizador_id
@@ -1341,13 +1349,13 @@ def get_ferias(mostrar_todas=False):
     hoje = datetime.now().strftime("%Y-%m-%d %H:%M")
     if mostrar_todas:
         return db_rows("""
-            SELECT f.*, u.posto, u.nome, u.sobrenome, u.antiguidade
+            SELECT f.*, u.posto, u.posto_portugal, u.nome, u.sobrenome, u.antiguidade
             FROM ferias f
             JOIN utilizadores u ON u.id = f.utilizador_id
             ORDER BY f.data_hora_inicio DESC
         """)
     return db_rows("""
-        SELECT f.*, u.posto, u.nome, u.sobrenome, u.antiguidade
+        SELECT f.*, u.posto, u.posto_portugal, u.nome, u.sobrenome, u.antiguidade
         FROM ferias f
         JOIN utilizadores u ON u.id = f.utilizador_id
         WHERE f.data_hora_fim >= ?
@@ -1357,7 +1365,7 @@ def get_ferias(mostrar_todas=False):
 
 def get_feria(feria_id):
     return db_one("""
-        SELECT f.*, u.posto, u.nome, u.sobrenome
+        SELECT f.*, u.posto, u.posto_portugal, u.nome, u.sobrenome
         FROM ferias f
         JOIN utilizadores u ON u.id = f.utilizador_id
         WHERE f.id = ?

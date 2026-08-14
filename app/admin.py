@@ -3,7 +3,9 @@ import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
 from datetime import date, datetime
 
-from app.config import COR_PRINCIPAL, COR_VERMELHO, POSTOS, TIPOS_ACESSO, TIPOS_ACESSO_DESCRICAO, DOCS_DIR
+from app.config import (COR_PRINCIPAL, COR_VERMELHO, POSTOS, POSTOS_PORTUGAL,
+                        POSTO_PORTUGAL_PADRAO, TIPOS_ACESSO,
+                        TIPOS_ACESSO_DESCRICAO, DOCS_DIR)
 from app.datepicker import DateEntry, DateTimeEntry
 from app.db import (
     db_execute, db_execute_return_id, db_one, db_rows,
@@ -897,7 +899,7 @@ class AdminWindow:
                 "end",
                 values=(
                     user["nim"],
-                    user["posto"],
+                    user.get("posto_portugal") or user["posto"],
                     user.get("antiguidade") or "",
                     "",
                     "",
@@ -1046,10 +1048,18 @@ class AdminWindow:
 
         bloco_posto = tk.Frame(linha_posto_antiguidade, bg="white")
         bloco_posto.pack(side="left")
-        tk.Label(bloco_posto, text="Posto:", bg="white", font=("Arial", 9, "bold")).pack(anchor="w")
+        tk.Label(bloco_posto, text="Posto da missão:", bg="white", font=("Arial", 9, "bold")).pack(anchor="w")
         combo_posto = ttk.Combobox(bloco_posto, state="readonly", values=POSTOS, width=16)
         combo_posto.set(user["posto"] if user else POSTOS[0])
         combo_posto.pack(anchor="w", pady=(2, 0), ipady=3)
+
+        bloco_posto_pt = tk.Frame(linha_posto_antiguidade, bg="white")
+        bloco_posto_pt.pack(side="left", padx=(22, 0))
+        tk.Label(bloco_posto_pt, text="Posto português:", bg="white", font=("Arial", 9, "bold")).pack(anchor="w")
+        combo_posto_pt = ttk.Combobox(bloco_posto_pt, state="readonly", values=[""] + POSTOS_PORTUGAL, width=16)
+        combo_posto_pt.set((user.get("posto_portugal") or "") if user else POSTO_PORTUGAL_PADRAO.get(POSTOS[0], ""))
+        combo_posto_pt.pack(anchor="w", pady=(2, 0), ipady=3)
+        combo_posto.bind("<<ComboboxSelected>>", lambda _event: combo_posto_pt.set(POSTO_PORTUGAL_PADRAO.get(combo_posto.get(), "")))
 
         bloco_antiguidade = tk.Frame(linha_posto_antiguidade, bg="white")
         bloco_antiguidade.pack(side="left", padx=(22, 0))
@@ -1173,6 +1183,7 @@ class AdminWindow:
         if master:
             entry_nim.config(state="disabled")
             combo_posto.config(state="disabled")
+            combo_posto_pt.config(state="disabled")
             entry_antiguidade.config_state("disabled")
             chk_snr.config(state="disabled")
             entry_telemovel_servico.config(state="disabled")
@@ -1196,6 +1207,7 @@ class AdminWindow:
 
             nim = entry_nim.get().strip()
             posto = combo_posto.get().strip()
+            posto_portugal = combo_posto_pt.get().strip()
             antiguidade = entry_antiguidade.get()
             snr = 1 if var_snr.get() else 0
             telemovel_servico = entry_telemovel_servico.get().strip()
@@ -1241,23 +1253,23 @@ class AdminWindow:
                         salt, pwd_hash = hash_password(password)
                         db_execute("""
                             UPDATE utilizadores
-                            SET nim = ?, posto = ?, antiguidade = ?, snr = ?, telemovel_servico = ?, responsavel_welfare = ?,
+                            SET nim = ?, posto = ?, posto_portugal = ?, antiguidade = ?, snr = ?, telemovel_servico = ?, responsavel_welfare = ?,
                                 nome = ?, sobrenome = ?, data_chegada = ?, data_partida = ?, tipo_acesso = ?,
                                 password_salt = ?, password_hash = ?
                             WHERE id = ? AND master = 0
                         """, (
-                            nim, posto, antiguidade, snr, telemovel_servico, responsavel_welfare,
+                            nim, posto, posto_portugal, antiguidade, snr, telemovel_servico, responsavel_welfare,
                             nome, sobrenome, data_chegada, data_partida, tipo_acesso, salt, pwd_hash, user["id"],
                         ))
                         set_utilizador_acessos(user["id"], acessos_selecionados)
                     else:
                         db_execute("""
                             UPDATE utilizadores
-                            SET nim = ?, posto = ?, antiguidade = ?, snr = ?, telemovel_servico = ?, responsavel_welfare = ?,
+                            SET nim = ?, posto = ?, posto_portugal = ?, antiguidade = ?, snr = ?, telemovel_servico = ?, responsavel_welfare = ?,
                                 nome = ?, sobrenome = ?, data_chegada = ?, data_partida = ?, tipo_acesso = ?
                             WHERE id = ? AND master = 0
                         """, (
-                            nim, posto, antiguidade, snr, telemovel_servico, responsavel_welfare,
+                            nim, posto, posto_portugal, antiguidade, snr, telemovel_servico, responsavel_welfare,
                             nome, sobrenome, data_chegada, data_partida, tipo_acesso, user["id"],
                         ))
                         set_utilizador_acessos(user["id"], acessos_selecionados)
@@ -1265,13 +1277,13 @@ class AdminWindow:
                     salt, pwd_hash = hash_password(password)
                     novo_id = db_execute_return_id("""
                         INSERT INTO utilizadores (
-                            nim, posto, antiguidade, snr, telemovel_servico, responsavel_welfare,
+                            nim, posto, posto_portugal, antiguidade, snr, telemovel_servico, responsavel_welfare,
                             nome, sobrenome, data_chegada, data_partida,
                             tipo_acesso, password_salt, password_hash, master
                         )
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
                     """, (
-                        nim, posto, antiguidade, snr, telemovel_servico, responsavel_welfare,
+                        nim, posto, posto_portugal, antiguidade, snr, telemovel_servico, responsavel_welfare,
                         nome, sobrenome, data_chegada, data_partida,
                         tipo_acesso, salt, pwd_hash,
                     ))

@@ -17,7 +17,7 @@ from app.person_order import person_order_key
 from app.vacation_service import APPROVED_STATUSES
 
 
-LOW_RANK_ORDER = {rank: index for index, rank in enumerate(reversed(POSTOS))}
+LOW_RANK_ORDER = {rank: index for index, rank in enumerate(reversed(["OF-6", *POSTOS]))}
 
 
 def _identificacao(person):
@@ -88,7 +88,7 @@ def _vacations(start, end):
     placeholders = ",".join("?" for _ in states)
     return db.db_rows(f"""
         SELECT f.utilizador_id, f.data_hora_inicio, f.data_hora_fim,
-               u.posto, u.nome, u.sobrenome
+               u.posto, u.posto_portugal, u.nome, u.sobrenome
         FROM ferias f JOIN utilizadores u ON u.id=f.utilizador_id
         WHERE u.master=0 AND f.estado IN ({placeholders})
           AND SUBSTR(f.data_hora_inicio, 1, 10)<=?

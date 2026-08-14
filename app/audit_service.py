@@ -103,7 +103,7 @@ def _details_json(details):
 def actor_identification(user):
     if not user:
         return "Sistema"
-    rank = str(user.get("posto") or "").strip()
+    rank = str(user.get("posto_portugal") or user.get("posto") or "").strip()
     surname = str(user.get("sobrenome") or "").strip().upper()
     name = str(user.get("nome") or "").strip().upper()
     return f"{rank} {surname or name}".strip() or str(user.get("nim") or "Sistema")

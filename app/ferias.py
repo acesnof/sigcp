@@ -13,7 +13,7 @@ from app.i18n import t
 
 
 def _identificacao(user):
-    posto = (user.get("posto") or "").strip()
+    posto = (user.get("posto_portugal") or user.get("posto") or "").strip()
     sobrenome = (user.get("sobrenome") or "").strip().upper()
     nome = (user.get("nome") or "").strip().upper()
     if sobrenome and nome:
@@ -82,7 +82,7 @@ class FeriasWindow:
         filtro = "" if self.mostrar_todas else "AND f.data_hora_fim >= ?"
         params = () if self.mostrar_todas else (hoje_agora,)
         rows = db_rows(f"""
-            SELECT f.*, u.posto, u.nome, u.sobrenome, u.antiguidade
+            SELECT f.*, u.posto, u.posto_portugal, u.nome, u.sobrenome, u.antiguidade
             FROM ferias f
             JOIN utilizadores u ON u.id = f.utilizador_id
             WHERE u.master = 0
@@ -371,7 +371,7 @@ class FeriasWindow:
         combo.grid(row=1, column=0, columnspan=2, sticky="w", pady=(0, 10))
 
         if row:
-            pessoa_atual = f"{row.get('posto') or ''} {(row.get('sobrenome') or '').upper()}, {(row.get('nome') or '').upper()}".strip()
+            pessoa_atual = f"{row.get('posto_portugal') or row.get('posto') or ''} {(row.get('sobrenome') or '').upper()}, {(row.get('nome') or '').upper()}".strip()
             combo.set(pessoa_atual)
         elif user_preselecionado:
             combo.set(_identificacao(user_preselecionado))

@@ -769,6 +769,8 @@ svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width:
 .vacation-history-table .actions-cell .vacation-table-actions { display: flex; justify-content: flex-end; flex-wrap: nowrap; gap: 5px; white-space: nowrap; }
 .vacation-history-table .actions-cell .btn { min-height: 29px; flex: 0 0 auto; padding: 5px 8px; white-space: nowrap; font-size: 9px; }
 .vacation-people-table .date-pair { display: grid; gap: 1px; white-space: nowrap; font-size: 10px; }
+.vacation-people-table td.vacation-days-gm { background: #f7f0d7; }
+.vacation-people-table th.vacation-days-gm { background: #f1e4b8; color: #273234; }
 .date-pair small { color: var(--muted); font-size: 8px; }
 .vacation-rules-grid { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(330px, .75fr); gap: 14px; align-items: start; }
 .vacation-settings-submit { justify-content: end; }

@@ -371,7 +371,7 @@ class PRTWelfareApp:
 
 
     def identificacao_utilizador_logado(self):
-        posto = (self.current_user.get("posto") or "").strip()
+        posto = (self.current_user.get("posto_portugal") or self.current_user.get("posto") or "").strip()
         sobrenome = (self.current_user.get("sobrenome") or "").strip().upper()
         nome = (self.current_user.get("nome") or "").strip().upper()
 

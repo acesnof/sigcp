@@ -256,6 +256,10 @@ def verificar_atualizacao():
         "A versão instalada está desatualizada.\n\n"
         f"Versão instalada: {config.APP_VERSION}\n"
         f"Versão disponível: {versao_disponivel}\n\n"
+        "Principais atualizações:\n"
+        "- Atualizada tabela Pessoas e direitos na Gestão de Férias.\n"
+        "- Disponibilização do total de dias GM na área individual de férias.\n"
+        "- Atualização dos postos conforme forças armadas portuguesas.\n\n"
         "Deseja atualizar agora?\n\n"
         f"Origem: {publicado}",
     )

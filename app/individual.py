@@ -758,10 +758,19 @@ class WelfareIndividualWindow:
             self.canvas.create_rectangle(resumo_x, y_semana, total_w, y_semana + self.row_h, fill=COR_SEMANA, outline=COR_LINHA)
 
     def identificacao(self, user):
-        posto = (user.get("posto") or "").strip()
+        posto = (user.get("posto_portugal") or user.get("posto") or "").strip()
         sobrenome = (user.get("sobrenome") or "").strip().upper()
         nome = (user.get("nome") or "").strip().upper()
         if sobrenome and nome:
+            return f"{posto} {sobrenome}, {nome}".strip()
+        return f"{posto} {sobrenome or nome}".strip()
+
+    def identificacao_missao(self, user):
+        """Identificação usada exclusivamente nos documentos de Welfare exportados."""
+        posto = (user.get("posto") or "").strip()
+        sobrenome = (user.get("sobrenome") or "").strip().upper()
+        nome = (user.get("nome") or "").strip().upper()
+        if nome and sobrenome:
             return f"{posto} {sobrenome}, {nome}".strip()
         return f"{posto} {sobrenome or nome}".strip()
 
@@ -1592,7 +1601,7 @@ class WelfareIndividualWindow:
 
             w_total, c_total, r_total = self.calcular_resumo_user(user)
             rows.append({
-                "identificacao": self.identificacao(user),
+                "identificacao": self.identificacao_missao(user),
                 "cells": row_cells,
                 "welfare_total": w_total,
                 "cohesion_total": c_total,
@@ -2014,7 +2023,7 @@ class WelfareIndividualWindow:
 
             w_total, c_total, r_total = self.calcular_resumo_user(user)
             rows.append({
-                "identificacao": self.identificacao(user),
+                "identificacao": self.identificacao_missao(user),
                 "cells": row_cells,
                 "welfare_total": w_total,
                 "cohesion_total": c_total,
