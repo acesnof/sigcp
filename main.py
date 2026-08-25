@@ -21,6 +21,8 @@ import app.config as config
 
 _backup_lock = threading.Lock()
 DEFAULT_SERVER_PORT = 52147
+UPDATE_NOTES_FILENAME = "SIGCP_alteracoes.txt"
+UPDATE_NOTES_FALLBACK = "- Melhorias e correções incluídas na nova versão."
 
 
 def _utilizador_real_windows():
@@ -79,6 +81,19 @@ def _hash_ficheiro(caminho, bloco=1024 * 1024):
                 break
             digest.update(dados)
     return digest.hexdigest()
+
+
+def _ler_alteracoes_publicadas(executavel_publicado):
+    """Lê as notas que acompanham o SIGCP.exe disponível para atualização."""
+    caminho = Path(executavel_publicado).with_name(UPDATE_NOTES_FILENAME)
+    try:
+        texto = caminho.read_text(encoding="utf-8-sig").strip()
+    except (OSError, UnicodeError):
+        return UPDATE_NOTES_FALLBACK
+    if not texto:
+        return UPDATE_NOTES_FALLBACK
+    # Evita que um ficheiro externo anormalmente grande torne a caixa inutilizável.
+    return texto[:4000].rstrip()
 
 
 def _ps_literal(valor):
@@ -251,15 +266,14 @@ def verificar_atualizacao():
         return False
 
     versao_disponivel = config.get_executable_version(publicado) or "desconhecida"
+    alteracoes = _ler_alteracoes_publicadas(publicado)
     atualizar = config.messagebox.askyesno(
         f"{config.APP_NAME} {config.APP_VERSION}",
         "A versão instalada está desatualizada.\n\n"
         f"Versão instalada: {config.APP_VERSION}\n"
         f"Versão disponível: {versao_disponivel}\n\n"
         "Principais atualizações:\n"
-        "- Atualizada tabela Pessoas e direitos na Gestão de Férias.\n"
-        "- Disponibilização do total de dias GM na área individual de férias.\n"
-        "- Atualização dos postos conforme forças armadas portuguesas.\n\n"
+        f"{alteracoes}\n\n"
         "Deseja atualizar agora?\n\n"
         f"Origem: {publicado}",
     )

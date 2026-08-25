@@ -103,6 +103,7 @@ from app.reports.request_docx import (
 from app.reports.service_note_docx import gerar_service_note
 from app.reports.weekly_xlsx import gerar_meals_request_weekly
 from app.reports.vacations_xlsx import generate_vacations_xlsx
+from app.reports.teams_pdf import generate_pdf as generate_teams_pdf
 from app.security import hash_password
 from app import audit_service as audit
 from app import vacation_service as vacations
@@ -999,7 +1000,14 @@ def create_web_app():
                 welfare["membros"] = []
                 continue
             team = teams_by_id.get(welfare.get("team_id"))
-            membros = [dict(item) for item in (team or {}).get("membros", [])]
+            membros = [
+                dict(item) for item in (team or {}).get("membros", [])
+                if str(item.get("data_chegada") or "")[:10] <= welfare["data"]
+                and (
+                    not str(item.get("data_partida") or "")[:10]
+                    or str(item.get("data_partida") or "")[:10] >= welfare["data"]
+                )
+            ]
             if membros:
                 ids = [item["id"] for item in membros]
                 ids_placeholders = ",".join("?" for _ in ids)
@@ -1038,7 +1046,10 @@ def create_web_app():
             FROM team_membros tm
             JOIN teams t ON t.id=tm.team_id
             JOIN welfares w ON w.team_id=t.id
+            JOIN utilizadores u ON u.id=tm.utilizador_id
             WHERE tm.utilizador_id=? AND w.data>=? AND w.local='Recanto'
+              AND SUBSTR(u.data_chegada, 1, 10)<=w.data
+              AND (COALESCE(u.data_partida, '')='' OR SUBSTR(u.data_partida, 1, 10)>=w.data)
             ORDER BY w.data, CASE w.refeicao WHEN 'Almoço' THEN 1 ELSE 2 END
             LIMIT 1
         """, (_user["id"], hoje_data))
@@ -1202,6 +1213,53 @@ def create_web_app():
             raise ApiError("Não tens permissão para gerir Teams.", 403, "permissao")
         teams, pessoas = _team_payload()
         return _json_ok(teams=teams, pessoas=pessoas)
+
+    @app.get("/api/teams.pdf")
+    @_login_required
+    def api_teams_pdf(user):
+        if not _pode_gerir_teams(user):
+            raise ApiError("Não tens acesso à exportação das Teams.", 403, "permissao")
+        hoje = date.today().isoformat()
+        cooks = db_rows("""
+            SELECT u.id, u.posto, u.posto_portugal, u.nome, u.sobrenome,
+                   u.antiguidade
+            FROM utilizadores u
+            WHERE u.master=0
+              AND SUBSTR(u.data_chegada, 1, 10)<=?
+              AND (COALESCE(u.data_partida, '')='' OR SUBSTR(u.data_partida, 1, 10)>=?)
+              AND (
+                  EXISTS (
+                      SELECT 1 FROM utilizadores_acessos ua
+                      WHERE ua.utilizador_id=u.id AND ua.tipo_acesso='Cozinheiro(a)'
+                  )
+                  OR instr(COALESCE(u.tipo_acesso, ''), 'Cozinheiro(a)')>0
+              )
+        """, (hoje, hoje))
+        cooks.sort(key=person_order_key)
+        estados = tuple(vacations.APPROVED_STATUSES)
+        estados_sql = ",".join("?" for _ in estados)
+        periodos = db_rows(f"""
+            SELECT u.id, u.posto, u.posto_portugal, u.nome, u.sobrenome,
+                   u.antiguidade, f.data_hora_inicio, f.data_hora_fim
+            FROM ferias f
+            JOIN utilizadores u ON u.id=f.utilizador_id
+            WHERE u.master=0
+              AND SUBSTR(u.data_chegada, 1, 10)<=?
+              AND (COALESCE(u.data_partida, '')='' OR SUBSTR(u.data_partida, 1, 10)>=?)
+              AND f.estado IN ({estados_sql})
+              AND SUBSTR(f.data_hora_fim, 1, 10)>=?
+            ORDER BY f.data_hora_inicio
+        """, (hoje, hoje, *estados, hoje))
+        for periodo in periodos:
+            for source, target in (("data_hora_inicio", "inicio"), ("data_hora_fim", "fim")):
+                try:
+                    periodo[target] = datetime.fromisoformat(periodo[source]).strftime("%d/%m/%Y %H:%M")
+                except (TypeError, ValueError):
+                    periodo[target] = str(periodo.get(source) or "")
+        return _download_gerado(
+            f"Constituicao_Teams_{hoje}.pdf", ".pdf", "application/pdf",
+            lambda caminho: generate_teams_pdf(caminho, get_teams(), cooks, periodos),
+        )
 
     @app.post("/api/teams")
     @_login_required

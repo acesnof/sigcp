@@ -45,11 +45,23 @@ class ApplicationUpdaterTest(unittest.TestCase):
     def test_different_executable_is_scheduled_when_accepted(self):
         published = self.shared / "SIGCP.exe"
         published.write_bytes(b"versao-2.1")
+        (self.shared / "SIGCP_alteracoes.txt").write_text(
+            "- Nova funcionalidade externa.", encoding="utf-8"
+        )
         patches = self._patch_runtime(answer=True)
         with patches[0], patches[1], patches[2], patches[3] as prompt, patches[4] as schedule:
             self.assertTrue(main.verificar_atualizacao())
         prompt.assert_called_once()
+        self.assertIn("Nova funcionalidade externa", prompt.call_args.args[1])
         schedule.assert_called_once_with(published, self.local)
+
+    def test_update_prompt_uses_fallback_when_external_notes_are_missing(self):
+        published = self.shared / "SIGCP.exe"
+        published.write_bytes(b"versao-sem-notas")
+        patches = self._patch_runtime(answer=True)
+        with patches[0], patches[1], patches[2], patches[3] as prompt, patches[4]:
+            self.assertTrue(main.verificar_atualizacao())
+        self.assertIn(main.UPDATE_NOTES_FALLBACK, prompt.call_args.args[1])
 
     def test_different_executable_closes_when_update_is_declined_twice(self):
         (self.shared / "SIGCP.exe").write_bytes(b"versao-2.1")

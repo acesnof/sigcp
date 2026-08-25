@@ -1016,9 +1016,10 @@ def get_teams():
                u.data_chegada, u.data_partida
         FROM team_membros tm
         JOIN utilizadores u ON u.id=tm.utilizador_id
-        WHERE COALESCE(u.data_partida, '')='' OR u.data_partida>=?
+        WHERE SUBSTR(COALESCE(u.data_chegada, ''), 1, 10)<=?
+          AND (COALESCE(u.data_partida, '')='' OR SUBSTR(u.data_partida, 1, 10)>=?)
         ORDER BY tm.team_id
-    """, (hoje,))
+    """, (hoje, hoje))
     por_team = {}
     for membro in membros:
         por_team.setdefault(membro.pop("team_id"), []).append(membro)

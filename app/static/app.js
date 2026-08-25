@@ -600,7 +600,7 @@
     }
 
     async function renderTeams() {
-        setPageHeader("Gestão Teams", "PLANEAMENTO", `<button class="btn btn--secondary" data-action="go-calendar">${icon("calendar")} Voltar ao calendário</button>`);
+        setPageHeader("Gestão Teams", "PLANEAMENTO", `<button class="btn btn--secondary" data-action="teams-pdf">${icon("print")} Exportar PDF</button><button class="btn btn--secondary" data-action="go-calendar">${icon("calendar")} Voltar ao calendário</button>`);
         const data = await api("/api/teams");
         const editable = state.boot.permissions.teams;
         const rows = data.teams.map((team) => `<tr>
@@ -2771,6 +2771,7 @@
             catch (error) { toast(error.message, "error"); }
         }
         else if (action === "go-calendar") await navigate("calendar");
+        else if (action === "teams-pdf") await download("/api/teams.pdf", {}, "Constituicao_Teams.pdf");
         else if (action === "team-create") openTeamNameModal();
         else if (action === "team-edit") {
             const team = state.teamsData?.teams.find((item) => item.id === Number(target.dataset.teamId));

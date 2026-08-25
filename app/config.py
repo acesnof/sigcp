@@ -9,7 +9,7 @@ from urllib.parse import quote
 
 APP_NAME = "SIGCP"
 APP_FULL_NAME = "Sistema Integrado de Gestão do Contingente Português"
-APP_VERSION = "2.5.3"
+APP_VERSION = "2.5.4"
 LEGACY_APP_NAME = "PRT Welfare"
 
 
@@ -334,6 +334,7 @@ TIPOS_ACESSO = [
     "Gestão Ementa",
     "Gestão Welfare Individual",
     "Gestão Caixa",
+    "Cozinheiro(a)",
     "Leitura",
     "Pessoal/Gestão Férias",
 ]
@@ -352,6 +353,7 @@ TIPOS_ACESSO_DESCRICAO = {
     "Gestão Ementa": "Consulta a ementa mensal; a edição é reservada à Gestão Welfare Mensal, Administrador ou Responsável Welfare.",
     "Gestão Welfare Individual": "Gere os Welfares Individuais do contingente.",
     "Gestão Caixa": "Gere entradas, saídas e balanços da Caixa.",
+    "Cozinheiro(a)": "Integra a equipa responsável pela confeção dos Welfares no Recanto.",
     "Leitura": "Acesso em modo de Leitura/Consulta.",
     "Pessoal/Gestão Férias": "Gere as férias do pessoal do contingente.",
 }

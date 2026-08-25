@@ -982,6 +982,44 @@ class WebAppTest(unittest.TestCase):
         self.assertEqual(200, xfa.status_code)
         self.assertEqual(1, len(xfa.get_json()["data"]["resultados"]))
 
+    def test_dashboard_filters_team_members_by_the_welfare_mission_date(self):
+        today = date.today()
+        welfare_day = (today + timedelta(days=2)).isoformat()
+        member_id = self.create_user(
+            "leaves_before_welfare",
+            partida=f"{today.isoformat()} 23:59",
+        )
+        team_id = db.db_execute_return_id("INSERT INTO teams (nome) VALUES ('Team Futuro')")
+        db.db_execute(
+            "INSERT INTO team_membros (team_id, utilizador_id) VALUES (?, ?)",
+            (team_id, member_id),
+        )
+        db.guardar_welfare(
+            welfare_day, "Almoço", "Welfare", "Prato", "", "", team_id, "Recanto"
+        )
+
+        self.login()
+        dashboard = self.client.get("/api/dashboard").get_json()
+        welfare = next(item for item in dashboard["proximos_welfares"] if item["data"] == welfare_day)
+        self.assertEqual([], welfare["membros"])
+
+    def test_teams_pdf_is_one_a4_page_and_cook_access_is_available(self):
+        cook_id = self.create_user("cook_pdf", acesso="Cozinheiro(a)")
+        team_id = db.db_execute_return_id("INSERT INTO teams (nome) VALUES ('Team Um')")
+        db.db_execute(
+            "INSERT INTO team_membros (team_id, utilizador_id) VALUES (?, ?)",
+            (team_id, cook_id),
+        )
+        csrf = self.login()
+        bootstrap = self.client.get("/api/bootstrap").get_json()
+        self.assertIn("Cozinheiro(a)", bootstrap["config"]["tipos_acesso"])
+
+        response = self.client.get("/api/teams.pdf", headers={"X-CSRF-Token": csrf})
+        self.assertEqual(200, response.status_code)
+        self.assertEqual("application/pdf", response.mimetype)
+        self.assertTrue(response.data.startswith(b"%PDF"))
+        self.assertEqual(1, response.data.count(b"/Type /Page\n"))
+
 
 if __name__ == "__main__":
     unittest.main()
