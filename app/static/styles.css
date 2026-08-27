@@ -318,6 +318,7 @@ svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width:
     text-align: left;
     font-size: 13px;
     font-weight: 620;
+    text-decoration: none;
     transition: .16s ease;
 }
 .nav-item svg { width: 19px; height: 19px; color: rgba(145, 220, 221, .83); }
@@ -809,6 +810,7 @@ svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width:
 .vacation-legend-code--f { background: #d7f2ee; color: #126750; }
 .vacation-legend-code--td { background: #d9ecfb; color: #1c6096; }
 .vacation-legend-code--fs { background: #edf0f1; color: #65777a; }
+.vacation-legend-outside-mission { width: 18px; height: 18px; border-radius: 5px; background: #4b5563; }
 .vacation-legend-pending { width: 18px; height: 18px; border: 2px dashed var(--amber); border-radius: 5px; }
 .vacation-calendar-card { overflow: hidden; }
 .vacation-calendar-table { min-width: max-content; width: 100%; border-collapse: separate; border-spacing: 0; table-layout: fixed; font-size: 8px; }
@@ -823,6 +825,7 @@ svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width:
 .vacation-calendar-table .vacation-calendar-person strong { font-size: 9px; }
 .vacation-calendar-table .vacation-calendar-person small { margin-top: 2px; color: var(--muted); font-size: 7px; }
 .vacation-calendar-table .vacation-calendar-special { background: #edf5f5; }
+.vacation-calendar-table td.vacation-calendar-outside-mission { background: #4b5563; }
 .vacation-calendar-table thead .vacation-calendar-special { background: #176d77; }
 .vacation-calendar-table td.vacation-code { cursor: pointer; font-weight: 850; }
 .vacation-calendar-table td.vacation-code--f { background: #d7f2ee; color: #126750; }
@@ -1127,6 +1130,7 @@ svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width:
     .vacation-calendar-print-meta p { margin: 0; color: #5b7074; font-size: 7pt; }
     .vacation-calendar-print-meta .vacation-calendar-legend { justify-content: flex-end; gap: 8px; font-size: 6.5pt; }
     .vacation-calendar-print-meta .vacation-legend-code { width: 18px; height: 15px; font-size: 6pt; }
+    .vacation-calendar-print-meta .vacation-legend-outside-mission { width: 14px; height: 14px; }
     .vacation-calendar-print-meta .vacation-legend-pending { width: 14px; height: 14px; }
     .vacation-calendar-print-table { width: 100%; overflow: visible; border: 1px solid #9db3b6; }
     .vacation-calendar-print-table .vacation-calendar-table { width: 100%; min-width: 0; border-collapse: collapse; table-layout: fixed; transform: none; font-size: 6pt; }

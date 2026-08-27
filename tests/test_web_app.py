@@ -83,6 +83,26 @@ class WebAppTest(unittest.TestCase):
         self.assertEqual(200, response.status_code)
         return self.client.get("/api/bootstrap").get_json()["csrf_token"]
 
+    def test_help_navigation_and_instruction_manual(self):
+        landing = self.client.get("/")
+        html = landing.get_data(as_text=True)
+        self.assertIn("AJUDA", html)
+        self.assertIn(
+            '<a class="nav-item" href="/manual/Manual_SIGCP.pdf" target="_blank"',
+            html,
+        )
+        self.assertIn("Manual de Instruções", html)
+
+        anonymous = self.client.get("/manual/Manual_SIGCP.pdf")
+        self.assertEqual(401, anonymous.status_code)
+
+        self.login()
+        manual = self.client.get("/manual/Manual_SIGCP.pdf")
+        self.assertEqual(200, manual.status_code)
+        self.assertEqual("application/pdf", manual.mimetype)
+        self.assertTrue(manual.data.startswith(b"%PDF-"))
+        manual.close()
+
     def test_login_bootstrap_calendar_and_individual(self):
         landing = self.client.get("/")
         self.assertEqual(200, landing.status_code)
@@ -393,6 +413,16 @@ class WebAppTest(unittest.TestCase):
             ],
             ordered,
         )
+
+    def test_builtin_master_is_hidden_from_user_lists(self):
+        self.login()
+
+        for query in ("", "?todos=1"):
+            response = self.client.get(f"/api/users{query}")
+            self.assertEqual(200, response.status_code)
+            self.assertFalse(
+                any(user["master"] for user in response.get_json()["users"])
+            )
 
     def test_dish_roster_is_visible_to_all_but_only_monthly_manager_can_generate(self):
         self.create_user("dish_reader", acesso="Leitura")

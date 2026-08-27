@@ -764,6 +764,18 @@ def create_web_app():
     def assets(nome):
         return send_from_directory(DOCS_DIR, nome, max_age=3600)
 
+    @app.get("/manual/Manual_SIGCP.pdf")
+    @_login_required
+    def manual_sigcp(_user):
+        return send_from_directory(
+            DOCS_DIR,
+            "Manual_SIGCP.pdf",
+            mimetype="application/pdf",
+            as_attachment=False,
+            conditional=True,
+            max_age=0,
+        )
+
     @app.post("/api/login")
     def api_login():
         dados = _body()
@@ -1507,12 +1519,12 @@ def create_web_app():
             "OR SUBSTR(data_partida, 1, 10) >= ?)"
         )
         if mostrar_todos:
-            rows = db_rows("SELECT * FROM utilizadores")
+            rows = db_rows("SELECT * FROM utilizadores WHERE master=0")
         else:
             rows = db_rows(
                 f"""
                 SELECT * FROM utilizadores
-                WHERE {ativo}
+                WHERE master=0 AND {ativo}
                 """,
                 (hoje,),
             )
@@ -2066,7 +2078,6 @@ def create_web_app():
             user,
             feria_id,
             dados,
-            can_manage=_pode_gerir_ferias(user),
             accept_warnings=bool(dados.get("accept_warnings")),
         )
         return _json_ok(

@@ -2,3 +2,7 @@
 - Exportação PDF da constituição atual das Teams, cozinheiros e férias.
 - Novo modelo A4 do relatório de Teams, com logótipo e tabelas por equipa.
 - Correção dos próximos Welfares conforme as datas de chegada e partida da missão.
+- Marcação, no calendário da Gestão de Férias, dos dias anteriores à chegada e posteriores à partida da missão.
+- Exclusão da conta mestre integrada das listagens de Pessoal e de Administração/Utilizadores.
+- Correção de pedidos de férias pendentes reservada ao próprio titular.
+- Novo acesso direto ao Manual de Instruções em PDF na secção Ajuda.

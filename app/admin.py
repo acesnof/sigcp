@@ -871,7 +871,7 @@ class AdminWindow:
         condicao_ativo = "(data_partida IS NULL OR TRIM(data_partida) = '' OR SUBSTR(data_partida, 1, 10) >= ?)"
 
         if self.mostrar_todos_utilizadores:
-            users = db_rows("SELECT * FROM utilizadores")
+            users = db_rows("SELECT * FROM utilizadores WHERE master=0")
 
             if self.btn_mostrar_todos:
                 self.btn_mostrar_todos.config(text=t("show_active_only"))
@@ -883,7 +883,7 @@ class AdminWindow:
             users = db_rows(f"""
                 SELECT *
                 FROM utilizadores
-                WHERE {condicao_ativo}
+                WHERE master=0 AND {condicao_ativo}
             """, (hoje,))
 
             if self.btn_mostrar_todos:

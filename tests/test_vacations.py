@@ -131,6 +131,44 @@ class VacationWorkflowTest(unittest.TestCase):
         self.assertEqual(200, response.status_code, response.get_json())
         return response.get_json()["id"]
 
+    def test_only_owner_can_correct_pending_request(self):
+        self.create_user("gestor_ferias", acesso="Pessoal/Gestão Férias")
+        _boot, person_headers = self.login("militar")
+        vacation_id = self.create_request(person_headers)
+        self.logout(person_headers)
+
+        boot, manager_headers = self.login("gestor_ferias")
+        self.assertTrue(boot["permissions"]["ferias_gerir"])
+        denied = self.client.put(
+            f"/api/vacations/{vacation_id}",
+            json={
+                "data_hora_inicio": "2026-06-11T18:00",
+                "data_hora_fim": "2026-06-21T10:00",
+                "accept_warnings": True,
+            },
+            headers=manager_headers,
+        )
+        self.assertEqual(403, denied.status_code, denied.get_json())
+        self.logout(manager_headers)
+
+        _boot, person_headers = self.login("militar")
+        corrected = self.client.put(
+            f"/api/vacations/{vacation_id}",
+            json={
+                "data_hora_inicio": "2026-06-11T18:00",
+                "data_hora_fim": "2026-06-21T10:00",
+                "accept_warnings": True,
+            },
+            headers=person_headers,
+        )
+        self.assertEqual(200, corrected.status_code, corrected.get_json())
+        self.assertEqual(
+            "2026-06-11 18:00",
+            db.db_one("SELECT data_hora_inicio FROM ferias WHERE id=?", (vacation_id,))[
+                "data_hora_inicio"
+            ],
+        )
+
     def test_private_area_snr_management_approval_and_welfare_reflection(self):
         boot, person_headers = self.login("militar")
         self.assertTrue(boot["permissions"]["ferias_privadas"])

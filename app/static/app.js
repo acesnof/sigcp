@@ -1576,11 +1576,10 @@
 
     function vacationRequestActions(item, context = "private") {
         const own = Number(item.utilizador_id) === Number(state.boot.user.id);
-        const canManage = state.boot.permissions.ferias_gerir;
         const canDecide = state.boot.permissions.ferias_decidir;
         const conflict = own || Number(item.submetido_por || item.fluxo_pedido_por || 0) === Number(state.boot.user.id) || Number(item.fluxo_pedido_por || 0) === Number(state.boot.user.id);
         const actions = [`<button class="btn btn--small btn--secondary" data-action="vacation-detail" data-id="${item.id}">${icon("info")} Detalhes</button>`];
-        if ((own || canManage) && ["Pendente", "Devolvido"].includes(item.estado)) {
+        if (own && ["Pendente", "Devolvido"].includes(item.estado)) {
             actions.push(`<button class="btn btn--small btn--secondary" data-action="vacation-edit" data-id="${item.id}">${icon("edit")} Corrigir</button>`);
         }
         if (own && ["Pendente", "Devolvido"].includes(item.estado)) {
@@ -1911,9 +1910,20 @@
             const mark = data.grelha[String(person.id)]?.[iso];
             const day = new Date(`${iso}T12:00:00`);
             const special = day.getDay() === 0 || day.getDay() === 6 || holidays.has(iso);
-            return `<td class="${special ? "vacation-calendar-special" : ""} ${mark ? `vacation-code vacation-code--${mark.codigo.toLowerCase()} ${vacationActionable.has(mark.estado) ? "vacation-code--pending" : ""}` : ""}" ${mark ? `data-action="vacation-detail" data-id="${mark.feria_id}" title="${attr(mark.estado)}"` : ""}>${mark ? esc(mark.codigo) : ""}</td>`;
+            const arrival = String(person.data_chegada || "").slice(0, 10);
+            const departure = String(person.data_partida || "").slice(0, 10);
+            const outsideMission = (arrival && iso < arrival) || (departure && iso > departure);
+            const cellClass = outsideMission
+                ? "vacation-calendar-outside-mission"
+                : mark
+                    ? `vacation-code vacation-code--${mark.codigo.toLowerCase()} ${vacationActionable.has(mark.estado) ? "vacation-code--pending" : ""}`
+                    : special ? "vacation-calendar-special" : "";
+            const cellAttrs = outsideMission
+                ? `title="Fora da missão"`
+                : mark ? `data-action="vacation-detail" data-id="${mark.feria_id}" title="${attr(mark.estado)}"` : "";
+            return `<td class="${cellClass}" ${cellAttrs}>${outsideMission ? "" : mark ? esc(mark.codigo) : ""}</td>`;
         }).join("")}</tr>`).join("");
-        const legend = `<div class="vacation-calendar-legend"><span><b class="vacation-legend-code vacation-legend-code--f">F</b> Férias</span><span><b class="vacation-legend-code vacation-legend-code--td">TD</b> Viagem</span><span><b class="vacation-legend-code vacation-legend-code--fs">FS</b> Fim de semana / feriado</span><span><b class="vacation-legend-pending"></b> Decisão pendente</span></div>`;
+        const legend = `<div class="vacation-calendar-legend"><span><b class="vacation-legend-code vacation-legend-code--f">F</b> Férias</span><span><b class="vacation-legend-code vacation-legend-code--td">TD</b> Viagem</span><span><b class="vacation-legend-code vacation-legend-code--fs">FS</b> Fim de semana / feriado</span><span><b class="vacation-legend-outside-mission"></b> Fora da missão</span><span><b class="vacation-legend-pending"></b> Decisão pendente</span></div>`;
         root.innerHTML = `<div class="vacation-calendar-toolbar">
             <div class="period-picker"><button class="icon-btn" data-action="vacation-month" data-delta="-1">${icon("left")}</button><strong>${esc(state.boot.config.meses[state.vacationMonth] || state.vacationMonth)} ${state.vacationYear}</strong><button class="icon-btn" data-action="vacation-month" data-delta="1">${icon("right")}</button></div>
             <div class="vacation-calendar-toolbar__actions">${legend}${management ? `<button class="btn btn--secondary" data-action="vacation-calendar-print">${icon("print")} Imprimir mês</button>` : ""}</div>

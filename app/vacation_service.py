@@ -701,16 +701,16 @@ def create_request(actor, target_id, values, *, accept_warnings=False):
         conn.close()
 
 
-def update_request(actor, vacation_id, values, *, can_manage=False, accept_warnings=False):
+def update_request(actor, vacation_id, values, *, accept_warnings=False):
     existing = db.db_one("SELECT * FROM ferias WHERE id = ?", (int(vacation_id),))
     if not existing:
         raise VacationValidationError("Pedido não encontrado.")
     own = int(existing["utilizador_id"]) == int(actor["id"])
-    if not own and not can_manage:
+    if not own:
         raise PermissionError("Não podes alterar este pedido.")
     if existing["estado"] not in (STATUS_PENDING, STATUS_RETURNED):
         raise VacationValidationError("Apenas pedidos pendentes ou devolvidos podem ser corrigidos.")
-    target_id = int(values.get("utilizador_id") or existing["utilizador_id"]) if can_manage else int(existing["utilizador_id"])
+    target_id = int(existing["utilizador_id"])
     payload = dict(values)
     payload["utilizador_id"] = target_id
     candidate, validation = require_valid(
