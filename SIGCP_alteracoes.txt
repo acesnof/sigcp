@@ -6,3 +6,4 @@
 - Exclusão da conta mestre integrada das listagens de Pessoal e de Administração/Utilizadores.
 - Correção de pedidos de férias pendentes reservada ao próprio titular.
 - Novo acesso direto ao Manual de Instruções em PDF na secção Ajuda.
+- Ordenação cronológica conjunta das entradas e saídas na consulta da Caixa, da mais recente para a mais antiga.
