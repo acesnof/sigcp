@@ -781,8 +781,6 @@ def decide_request(actor, vacation_id, action, note=""):
             raise VacationValidationError("Pedido não encontrado.")
         if existing["estado"] != STATUS_PENDING:
             raise VacationValidationError("Este pedido já não está pendente.")
-        if int(existing["utilizador_id"]) == int(actor["id"]) or int(existing.get("submetido_por") or 0) == int(actor["id"]):
-            raise VacationValidationError("Não podes decidir o teu próprio pedido.")
         stamp = now_db()
         conn.execute(
             """
@@ -959,12 +957,6 @@ def decide_change(actor, vacation_id, action, note=""):
         existing = _record(conn, vacation_id)
         if not existing or existing["estado"] != STATUS_CHANGE_PENDING:
             raise VacationValidationError("Este pedido já não aguarda decisão de alteração.")
-        if (
-            int(existing["utilizador_id"]) == int(actor["id"])
-            or int(existing.get("submetido_por") or 0) == int(actor["id"])
-            or int(existing.get("fluxo_pedido_por") or 0) == int(actor["id"])
-        ):
-            raise VacationValidationError("A alteração tem de ser decidida por outro aprovador.")
         stamp = now_db()
         if action == "approve":
             proposed = {
@@ -1068,12 +1060,6 @@ def decide_cancellation(actor, vacation_id, action, note=""):
         existing = _record(conn, vacation_id)
         if not existing or existing["estado"] != STATUS_CANCEL_PENDING:
             raise VacationValidationError("Este pedido já não aguarda decisão de cancelamento.")
-        if (
-            int(existing["utilizador_id"]) == int(actor["id"])
-            or int(existing.get("submetido_por") or 0) == int(actor["id"])
-            or int(existing.get("fluxo_pedido_por") or 0) == int(actor["id"])
-        ):
-            raise VacationValidationError("O cancelamento tem de ser decidido por outro aprovador.")
         approved = action == "approve"
         new_status = STATUS_ANNULLED if approved else STATUS_APPROVED
         stamp = now_db()
@@ -1301,8 +1287,15 @@ def list_requests(
         where.append("f.data_hora_inicio < ? AND f.data_hora_fim >= ?")
         params.extend((end, start))
     if future_only:
-        where.append("f.data_hora_fim >= ?")
+        # Pedidos que ainda aguardam uma decisão têm de continuar visíveis
+        # aos Administradores/SNR mesmo quando o período já terminou.
+        pending_statuses = STATUS_FILTER_GROUPS["pending"]
+        pending_placeholders = ",".join("?" for _ in pending_statuses)
+        where.append(
+            f"(f.data_hora_fim >= ? OR f.estado IN ({pending_placeholders}))"
+        )
         params.append(datetime.now().strftime("%Y-%m-%d %H:%M"))
+        params.extend(pending_statuses)
     if status and status in ALL_STATUSES:
         where.append("f.estado = ?")
         params.append(status)
@@ -1506,9 +1499,25 @@ def management_payload(
     chosen_year = int(year or settings["ano_calendario"])
     holiday_rows = get_holidays()
     holiday_dates = {row["data"] for row in holiday_rows if int(row.get("ativo") or 0)}
+    def people_order_key(member):
+        # Na gestão de direitos, quem permanece na missão surge primeiro.
+        # Para quem está na missão aplica-se posto e antiguidade; para quem
+        # já saiu aplica-se posto e nome.
+        common_key = person_order_key(member)
+        if member_still_in_mission(member):
+            return (0, *common_key)
+        return (
+            1,
+            common_key[0],
+            str(member.get("sobrenome") or "").strip().casefold(),
+            str(member.get("nome") or "").strip().casefold(),
+            str(member.get("nim") or "").strip().casefold(),
+            str(member.get("id") or ""),
+        )
+
     users = sorted(
         db.db_rows("SELECT * FROM utilizadores WHERE master=0"),
-        key=person_order_key,
+        key=people_order_key,
     )
     visible_users = users if show_all else [
         member for member in users if member_still_in_mission(member)
@@ -1571,7 +1580,7 @@ def management_payload(
     for item in scoped_for_year:
         by_member.setdefault(item["utilizador_id"], []).append(item)
     people = []
-    payload_users = visible_users if export_only else users
+    payload_users = visible_users
     for member in payload_users:
         safe = safe_member(member)
         safe["pode_novo_pedido"] = member_still_in_mission(member)

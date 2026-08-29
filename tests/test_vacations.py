@@ -227,6 +227,45 @@ class VacationWorkflowTest(unittest.TestCase):
         self.assertEqual("ferias", row["celulas"]["2026-06-12"]["almoco"]["estado"])
         self.assertEqual("ferias", row["celulas"]["2026-06-12"]["jantar"]["estado"])
 
+    def test_admin_and_snr_can_approve_past_requests_without_submitter_conflict(self):
+        admin_id = self.create_user("admin_ferias", acesso="Administrador")
+        past_end = datetime.now().replace(second=0, microsecond=0) - timedelta(days=2)
+        past_start = past_end - timedelta(days=5)
+
+        for approver, approver_id in (("admin_ferias", admin_id), ("snr_ferias", self.snr_id)):
+            vacation_id = db.db_execute_return_id(
+                """
+                INSERT INTO ferias (
+                    utilizador_id, data_hora_inicio, data_hora_fim, estado,
+                    submetido_por, submetido_em
+                ) VALUES (?, ?, ?, 'Pendente', ?, CURRENT_TIMESTAMP)
+                """,
+                (
+                    self.person_id,
+                    past_start.strftime("%Y-%m-%d %H:%M"),
+                    past_end.strftime("%Y-%m-%d %H:%M"),
+                    approver_id,
+                ),
+            )
+            boot, headers = self.login(approver)
+            self.assertTrue(boot["permissions"]["ferias_decidir"])
+            visible_ids = {
+                item["id"]
+                for item in self.client.get("/api/vacations/manage").get_json()["data"]["pedidos"]
+            }
+            self.assertIn(vacation_id, visible_ids)
+            approved = self.client.post(
+                f"/api/vacations/{vacation_id}/decision",
+                json={"action": "approve", "note": "Regularização"},
+                headers=headers,
+            )
+            self.assertEqual(200, approved.status_code, approved.get_json())
+            self.assertEqual(
+                "Aprovado",
+                db.db_one("SELECT estado FROM ferias WHERE id=?", (vacation_id,))["estado"],
+            )
+            self.logout(headers)
+
     def test_change_and_cancellation_keep_approved_period_until_decision(self):
         _boot, person_headers = self.login("militar")
         vacation_id = self.create_request(person_headers)
@@ -371,13 +410,17 @@ class VacationWorkflowTest(unittest.TestCase):
         self.assertEqual(200, current.status_code)
         current_data = current.get_json()["data"]
         self.assertEqual(2, current_data["resumo"]["pessoas"])
-        self.assertIn(departed_id, [item["id"] for item in current_data["pessoas"]])
+        self.assertNotIn(departed_id, [item["id"] for item in current_data["pessoas"]])
 
         all_people = self.client.get("/api/vacations/manage?ano=2026&todos=1")
         self.assertEqual(200, all_people.status_code)
         all_data = all_people.get_json()["data"]
         self.assertEqual(3, all_data["resumo"]["pessoas"])
         self.assertIn(departed_id, [item["id"] for item in all_data["pessoas"]])
+        self.assertEqual(
+            [self.person_id, self.snr_id, departed_id],
+            [item["id"] for item in all_data["pessoas"]],
+        )
 
         from openpyxl import load_workbook
         from io import BytesIO
@@ -396,6 +439,29 @@ class VacationWorkflowTest(unittest.TestCase):
         }
         self.assertNotIn("OR-5 DEPARTED", current_names)
         self.assertIn("OR-5 DEPARTED", all_names)
+
+    def test_vacation_people_order_uses_antiquity_for_current_and_name_for_departed(self):
+        current_older = self.create_user(
+            "current_zulu", antiguidade="2018-01-01", partida="2099-12-31 20:00"
+        )
+        current_newer = self.create_user(
+            "current_alpha", antiguidade="2022-01-01", partida="2099-12-31 20:00"
+        )
+        departed_zulu = self.create_user(
+            "departed_zulu", antiguidade="2010-01-01", partida="2020-01-01 20:00"
+        )
+        departed_alpha = self.create_user(
+            "departed_alpha", antiguidade="2024-01-01", partida="2020-01-01 20:00"
+        )
+
+        payload = vacation_service.management_payload(year=2026, show_all=True)
+        relevant = {current_older, current_newer, departed_zulu, departed_alpha}
+        order = [item["id"] for item in payload["pessoas"] if item["id"] in relevant]
+
+        self.assertEqual(
+            [current_older, current_newer, departed_alpha, departed_zulu],
+            order,
+        )
 
     def test_current_view_history_and_chronological_order(self):
         now = datetime.now().replace(second=0, microsecond=0)
@@ -595,7 +661,7 @@ class VacationWorkflowTest(unittest.TestCase):
         )
         _boot, _headers = self.login("snr_ferias")
 
-        response = self.client.get("/api/vacations/manage?ano=2026")
+        response = self.client.get("/api/vacations/manage?ano=2026&todos=1")
 
         self.assertEqual(200, response.status_code)
         people = {

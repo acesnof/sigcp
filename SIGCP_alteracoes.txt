@@ -1,3 +1,5 @@
+- Administradores e SNR podem aprovar todos os tipos de pedidos de férias, incluindo períodos passados.
+- A aba Pessoal e Direitos mostra por defeito apenas quem está na missão, ordenado por posto e antiguidade; Mostrar todos acrescenta quem já saiu, ordenado por posto e nome.
 - Novo tipo de acesso Cozinheiro(a).
 - Exportação PDF da constituição atual das Teams, cozinheiros e férias.
 - Novo modelo A4 do relatório de Teams, com logótipo e tabelas por equipa.

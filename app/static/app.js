@@ -153,6 +153,7 @@
         vacationManagement: null,
         vacationManagementTab: "requests",
         vacationManagementAll: false,
+        vacationPeopleAll: false,
         vacationCalendar: null,
         vacationYear: new Date().getFullYear(),
         vacationHolidayYear: new Date().getFullYear(),
@@ -1577,7 +1578,6 @@
     function vacationRequestActions(item, context = "private") {
         const own = Number(item.utilizador_id) === Number(state.boot.user.id);
         const canDecide = state.boot.permissions.ferias_decidir;
-        const conflict = own || Number(item.submetido_por || item.fluxo_pedido_por || 0) === Number(state.boot.user.id) || Number(item.fluxo_pedido_por || 0) === Number(state.boot.user.id);
         const actions = [`<button class="btn btn--small btn--secondary" data-action="vacation-detail" data-id="${item.id}">${icon("info")} Detalhes</button>`];
         if (own && ["Pendente", "Devolvido"].includes(item.estado)) {
             actions.push(`<button class="btn btn--small btn--secondary" data-action="vacation-edit" data-id="${item.id}">${icon("edit")} Corrigir</button>`);
@@ -1589,16 +1589,16 @@
             actions.push(`<button class="btn btn--small btn--secondary" data-action="vacation-change" data-id="${item.id}">${icon("edit")} Pedir alteração</button>`);
             actions.push(`<button class="btn btn--small btn--ghost-danger" data-action="vacation-cancel" data-id="${item.id}">Pedir cancelamento</button>`);
         }
-        if (context === "management" && canDecide && !conflict && item.estado === "Pendente") {
+        if (context === "management" && canDecide && item.estado === "Pendente") {
             actions.push(`<button class="btn btn--small btn--success" data-action="vacation-decision" data-id="${item.id}" data-workflow="request" data-decision="approve">${icon("check")} Aprovar</button>`);
             actions.push(`<button class="btn btn--small btn--secondary" data-action="vacation-decision" data-id="${item.id}" data-workflow="request" data-decision="return">Devolver</button>`);
             actions.push(`<button class="btn btn--small btn--ghost-danger" data-action="vacation-decision" data-id="${item.id}" data-workflow="request" data-decision="reject">Rejeitar</button>`);
         }
-        if (context === "management" && canDecide && !conflict && item.estado === "Alteração pendente") {
+        if (context === "management" && canDecide && item.estado === "Alteração pendente") {
             actions.push(`<button class="btn btn--small btn--success" data-action="vacation-decision" data-id="${item.id}" data-workflow="change" data-decision="approve">${icon("check")} Aprovar alteração</button>`);
             actions.push(`<button class="btn btn--small btn--ghost-danger" data-action="vacation-decision" data-id="${item.id}" data-workflow="change" data-decision="reject">Rejeitar</button>`);
         }
-        if (context === "management" && canDecide && !conflict && item.estado === "Cancelamento pendente") {
+        if (context === "management" && canDecide && item.estado === "Cancelamento pendente") {
             actions.push(`<button class="btn btn--small btn--success" data-action="vacation-decision" data-id="${item.id}" data-workflow="cancellation" data-decision="approve">${icon("check")} Aprovar cancelamento</button>`);
             actions.push(`<button class="btn btn--small btn--ghost-danger" data-action="vacation-decision" data-id="${item.id}" data-workflow="cancellation" data-decision="reject">Rejeitar</button>`);
         }
@@ -1608,7 +1608,7 @@
         if (context === "management" && state.boot.permissions.admin && !own && item.estado === "Aprovado") {
             actions.push(`<button class="btn btn--small btn--ghost-danger" data-action="vacation-annul" data-id="${item.id}">Anular autorização</button>`);
         }
-        if (context === "management" && canDecide && !conflict && item.estado === "Anulado") {
+        if (context === "management" && canDecide && item.estado === "Anulado") {
             actions.push(`<button class="btn btn--small btn--secondary" data-action="vacation-restore" data-id="${item.id}">${icon("unlock")} Reverter anulação</button>`);
         }
         if (context === "management" && state.boot.permissions.admin) {
@@ -1782,7 +1782,9 @@
         const selectedYear = state.vacationManagementTab === "rules"
             ? state.vacationHolidayYear : state.vacationYear;
         const query = new URLSearchParams({ano: String(selectedYear)});
-        query.set("todos", state.vacationManagementAll ? "1" : "0");
+        const showAll = state.vacationManagementTab === "people"
+            ? state.vacationPeopleAll : state.vacationManagementAll;
+        query.set("todos", showAll ? "1" : "0");
         query.set("grupo_estado", state.vacationFilters.statusGroup || "all");
         if (state.vacationFilters.area) query.set("area", state.vacationFilters.area);
         if (state.vacationFilters.search) query.set("pesquisa", state.vacationFilters.search);
@@ -1841,7 +1843,7 @@
 
     function drawVacationPeople(root, data) {
         root.innerHTML = `<div class="card">
-            <div class="card-header"><div><h2>Pessoal e direitos</h2><p>Cálculo 30/360, missão, área funcional e períodos planeados.</p></div><span class="badge badge--teal">${data.pessoas.length} pessoas</span></div>
+            <div class="card-header"><div><h2>Pessoal e direitos</h2><p>Cálculo 30/360, missão, área funcional e períodos planeados.</p></div><div class="team-actions"><span class="badge badge--teal">${data.pessoas.length} pessoas</span><button class="btn btn--secondary btn--small" data-action="vacation-people-toggle-all">${state.vacationPeopleAll ? "Mostrar atuais" : "Mostrar todos"}</button></div></div>
             <div class="table-wrap"><table class="data-table vacation-people-table"><thead><tr><th>Pessoa</th><th>Área</th><th>Posição N.º</th><th>Missão</th><th>Direito</th><th>Planeados</th><th class="vacation-days-gm">Dias para GM</th><th>Períodos</th><th></th></tr></thead>
             <tbody>${data.pessoas.map((person) => `<tr><td><div class="person-cell"><span class="avatar">${esc(initials(person))}</span><span><strong>${esc(person.identificacao)}</strong><small>${esc(person.nim)}${person.snr_substituto ? ` · Subst. SNR: ${fmtDate(person.snr_substituto_inicio)}–${fmtDate(person.snr_substituto_fim)}` : ""}</small></span></div></td>
                 <td>${esc(person.area_funcional)}</td><td>${esc(person.posicao_numero || "—")}</td><td><span class="date-pair">${fmtDate(person.data_chegada)}<small>até</small>${fmtDate(person.data_partida)}</span></td>
@@ -2959,6 +2961,10 @@
         }
         else if (action === "vacations-toggle-all") {
             state.vacationManagementAll = !state.vacationManagementAll;
+            await loadVacationManagement();
+        }
+        else if (action === "vacation-people-toggle-all") {
+            state.vacationPeopleAll = !state.vacationPeopleAll;
             await loadVacationManagement();
         }
         else if (action === "vacation-calendar-print") printVacationCalendar();

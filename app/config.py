@@ -9,7 +9,7 @@ from urllib.parse import quote
 
 APP_NAME = "SIGCP"
 APP_FULL_NAME = "Sistema Integrado de Gestão do Contingente Português"
-APP_VERSION = "2.5.5"
+APP_VERSION = "2.5.6"
 LEGACY_APP_NAME = "PRT Welfare"
 
 
