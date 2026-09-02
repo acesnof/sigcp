@@ -9,7 +9,7 @@ from urllib.parse import quote
 
 APP_NAME = "SIGCP"
 APP_FULL_NAME = "Sistema Integrado de Gestão do Contingente Português"
-APP_VERSION = "2.5.6"
+APP_VERSION = "2.6.0"
 LEGACY_APP_NAME = "PRT Welfare"
 
 
@@ -133,6 +133,14 @@ def _guardar_config_local(config):
         json.dump(config, f, ensure_ascii=False, indent=2)
 
 
+def existe_configuracao_do_utilizador():
+    """Indica se este perfil já configurou o SIGCP (ou a versão legada)."""
+    return any(
+        os.path.isfile(caminho)
+        for caminho in dict.fromkeys((CONFIG_PATH, LEGACY_CONFIG_PATH))
+    )
+
+
 def set_db_path(caminho):
     global DB_PATH
     DB_PATH = os.path.abspath(caminho)
@@ -144,6 +152,31 @@ def guardar_db_path(caminho):
     caminho = set_db_path(caminho)
     config = _ler_config_local()
     config["database_path"] = caminho
+    _guardar_config_local(config)
+    return caminho
+
+
+def localizar_base_dados_local(config=None):
+    """Procura a base nos locais locais previsíveis, sem abrir seletores."""
+    config = config or {}
+    candidatos = (
+        DB_PATH,
+        os.path.join(os.path.dirname(CONFIG_PATH), DB_FILENAME),
+        config.get("database_path"),
+    )
+    for caminho in dict.fromkeys(candidatos):
+        valido, _erro = validar_base_dados(caminho)
+        if valido:
+            return os.path.abspath(str(caminho))
+    return ""
+
+
+def guardar_base_dados_local(caminho):
+    """Persiste uma base local e remove um modo remoto herdado."""
+    caminho = set_db_path(caminho)
+    config = _ler_config_local()
+    config["database_path"] = caminho
+    config["database_mode"] = "local"
     _guardar_config_local(config)
     return caminho
 
@@ -223,6 +256,14 @@ def garantir_base_dados_configurada(parent=None):
         set_db_path(caminho_guardado)
         return True
 
+    # Num perfil ainda sem configuração, a base costuma acompanhar o
+    # executável. Usa-a automaticamente antes de incomodar o utilizador.
+    if not existe_configuracao_do_utilizador():
+        caminho_local = localizar_base_dados_local(config)
+        if caminho_local:
+            guardar_base_dados_local(caminho_local)
+            return True
+
     if caminho_guardado:
         mensagem = (
             "A base de dados configurada deixou de estar disponível:\n\n"
@@ -269,6 +310,7 @@ def garantir_base_dados_configurada(parent=None):
 
         set_db_path(caminho)
         config["database_path"] = DB_PATH
+        config["database_mode"] = "local"
         try:
             _guardar_config_local(config)
         except OSError as exc:

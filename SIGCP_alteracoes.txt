@@ -1,11 +1,1 @@
-- Administradores e SNR podem aprovar todos os tipos de pedidos de férias, incluindo períodos passados.
-- A aba Pessoal e Direitos mostra por defeito apenas quem está na missão, ordenado por posto e antiguidade; Mostrar todos acrescenta quem já saiu, ordenado por posto e nome.
-- Novo tipo de acesso Cozinheiro(a).
-- Exportação PDF da constituição atual das Teams, cozinheiros e férias.
-- Novo modelo A4 do relatório de Teams, com logótipo e tabelas por equipa.
-- Correção dos próximos Welfares conforme as datas de chegada e partida da missão.
-- Marcação, no calendário da Gestão de Férias, dos dias anteriores à chegada e posteriores à partida da missão.
-- Exclusão da conta mestre integrada das listagens de Pessoal e de Administração/Utilizadores.
-- Correção de pedidos de férias pendentes reservada ao próprio titular.
-- Novo acesso direto ao Manual de Instruções em PDF na secção Ajuda.
-- Ordenação cronológica conjunta das entradas e saídas na consulta da Caixa, da mais recente para a mais antiga.
+- Adição do Planeamento Geral de férias, acessível a todos em modo de consulta, com vistas de calendário e lista, filtros, histórico e impressão da vista ativa.

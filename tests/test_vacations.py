@@ -174,6 +174,14 @@ class VacationWorkflowTest(unittest.TestCase):
         self.assertTrue(boot["permissions"]["ferias_privadas"])
         self.assertFalse(boot["permissions"]["ferias"])
 
+        global_calendar = self.client.get(
+            "/api/vacations/calendar?ano=2026&mes=6&scope=all"
+        )
+        self.assertEqual(200, global_calendar.status_code, global_calendar.get_json())
+        self.assertIn(self.snr_id, {
+            person["id"] for person in global_calendar.get_json()["data"]["pessoas"]
+        })
+
         warning = self.client.post(
             "/api/vacations",
             json={
@@ -186,6 +194,12 @@ class VacationWorkflowTest(unittest.TestCase):
         self.assertTrue(warning.get_json()["warnings"])
 
         vacation_id = self.create_request(person_headers)
+        planning = self.client.get("/api/vacations/planning?todos=1")
+        self.assertEqual(200, planning.status_code, planning.get_json())
+        planning_data = planning.get_json()["data"]
+        self.assertIn(vacation_id, {item["id"] for item in planning_data["pedidos"]})
+        self.assertNotIn("pessoas", planning_data)
+        self.assertNotIn("settings", planning_data)
         own = self.client.get("/api/vacations/me?ano=2026&todos=1").get_json()["data"]
         self.assertEqual("Pendente", own["pedidos"][0]["estado"])
         self.assertEqual([], own["pedidos"][0]["historico"])

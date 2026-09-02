@@ -153,6 +153,10 @@
         vacationManagement: null,
         vacationManagementTab: "requests",
         vacationManagementAll: false,
+        vacationPlanning: null,
+        vacationPlanningMode: "calendar",
+        vacationPlanningAll: false,
+        vacationPlanningFilters: {statusGroup: "all", area: "", search: ""},
         vacationPeopleAll: false,
         vacationCalendar: null,
         vacationYear: new Date().getFullYear(),
@@ -469,7 +473,7 @@
             state.boot = data;
             setupShell();
             const hashPage = location.hash.replace("#", "");
-            const allowed = ["dashboard", "calendar", "dish-roster", "teams", "individual", "cash", "my-vacations", "personnel", "vacations", "admin"];
+            const allowed = ["dashboard", "calendar", "dish-roster", "teams", "individual", "cash", "my-vacations", "vacation-planning", "personnel", "vacations", "admin"];
             navigate(allowed.includes(hashPage) ? hashPage : "dashboard", false);
         } catch (error) {
             showLogin();
@@ -497,6 +501,7 @@
             else if (page === "individual") await renderIndividual();
             else if (page === "cash") await renderCash();
             else if (page === "my-vacations") await renderMyVacations();
+            else if (page === "vacation-planning") await renderVacationPlanning();
             else if (page === "personnel") await renderUsersPage(false);
             else if (page === "vacations") await renderVacations();
             else if (page === "admin") await renderAdmin();
@@ -1640,9 +1645,10 @@
     }
 
     function vacationHistoryTable(items, context = "private") {
-        const management = context === "management";
+        const management = context === "management" || context === "planning";
+        const readonly = context === "planning";
         return `<div class="card vacation-history-card"><div class="table-wrap"><table class="data-table vacation-history-table ${management ? "vacation-history-table--management" : ""}">
-            <thead><tr><th>Estado</th>${management ? "<th>Pessoa</th>" : ""}<th>Partida</th><th>Chegada</th><th>Dias</th><th>Informação</th><th></th></tr></thead>
+            <thead><tr><th>Estado</th>${management ? "<th>Pessoa</th>" : ""}<th>Partida</th><th>Chegada</th><th>Dias</th><th>Informação</th>${readonly ? "" : "<th></th>"}</tr></thead>
             <tbody>${items.map((item) => {
                 const summary = item.resumo || {};
                 const information = [item.companhia_aerea, item.observacao].filter(Boolean).join(" · ");
@@ -1653,7 +1659,7 @@
                     <td class="vacation-history-period"><strong>${fmtDate(item.data_hora_fim)}</strong><small>${esc(String(item.data_hora_fim || "").slice(11, 16))}</small></td>
                     <td class="vacation-history-days"><strong>${summary.dias_ferias ?? 0} F</strong> · ${summary.dias_viagem ?? 0} TD · ${summary.dias_fim_semana_feriado ?? 0} FS</td>
                     <td>${information ? esc(information) : "—"}</td>
-                    <td class="actions-cell"><div class="vacation-table-actions">${vacationRequestActions(item, context)}</div></td>
+                    ${readonly ? "" : `<td class="actions-cell"><div class="vacation-table-actions">${vacationRequestActions(item, context)}</div></td>`}
                 </tr>`;
             }).join("")}</tbody>
         </table></div></div>`;
@@ -1778,6 +1784,52 @@
         await loadVacationManagement();
     }
 
+    async function renderVacationPlanning() {
+        setPageHeader("Planeamento Geral", "FÉRIAS · CALENDÁRIO");
+        els.content.innerHTML = `<section class="page page--wide vacation-page vacation-management">
+            <div id="vacation-planning-root"><div class="card empty-state"><div><div class="loader"></div></div></div></div>
+        </section>`;
+        if (state.vacationPlanningMode === "list") await loadVacationPlanning();
+        else await loadVacationCalendar(true);
+    }
+
+    function vacationPlanningQuery() {
+        const query = new URLSearchParams({todos: state.vacationPlanningAll ? "1" : "0"});
+        query.set("grupo_estado", state.vacationPlanningFilters.statusGroup || "all");
+        if (state.vacationPlanningFilters.area) query.set("area", state.vacationPlanningFilters.area);
+        if (state.vacationPlanningFilters.search) query.set("pesquisa", state.vacationPlanningFilters.search);
+        return query.toString();
+    }
+
+    async function loadVacationPlanning() {
+        setLoading(true);
+        try {
+            const response = await api(`/api/vacations/planning?${vacationPlanningQuery()}`);
+            state.vacationPlanning = response.data;
+            drawVacationPlanningList();
+        } finally { setLoading(false); }
+    }
+
+    function drawVacationPlanningList() {
+        const data = state.vacationPlanning;
+        const root = $("#vacation-planning-root");
+        if (!root || !data) return;
+        const filters = state.vacationPlanningFilters;
+        root.innerHTML = `<div class="vacation-planning-toolbar">
+            <div><strong>Vista em lista</strong><small>${state.vacationPlanningAll ? "Histórico completo de férias" : "Férias atuais e futuras"}</small></div>
+            <div><button class="btn btn--secondary" data-action="vacation-planning-print">${icon("print")} Imprimir</button><button class="btn btn--secondary" data-action="vacation-planning-mode" data-mode="calendar">${icon("calendar")} Vista em calendário</button></div>
+        </div><div class="vacation-filterbar card">
+            <label class="search-box vacation-filterbar__search">${icon("search")}<input id="planning-vacation-search" placeholder="NIM, posto ou nome…" value="${attr(filters.search)}"></label>
+            <div class="segmented vacation-state-filter" role="group" aria-label="Filtrar férias por estado">
+                ${[["all", "Todas"], ["pending", "Pendentes"], ["approved", "Aprovadas"], ["annulled", "Anuladas"]].map(([value, label]) => `<button class="${filters.statusGroup === value ? "active" : ""}" data-action="vacation-planning-filter-state" data-state="${value}">${label}</button>`).join("")}
+            </div>
+            <label class="compact-field"><span>Área</span><select id="planning-vacation-area"><option value="">Todas</option>${data.areas.map((area) => `<option value="${attr(area)}" ${filters.area === area ? "selected" : ""}>${esc(area)}</option>`).join("")}</select></label>
+            <button class="btn btn--secondary" data-action="vacation-planning-apply">${icon("search")} Aplicar</button>
+            <button class="btn btn--ghost" data-action="vacation-planning-clear">Limpar</button>
+            <button class="btn btn--secondary vacation-filterbar__mode" data-action="vacation-planning-toggle-all">${icon(state.vacationPlanningAll ? "calendar" : "grid")} ${state.vacationPlanningAll ? "Só atuais" : "Incluir passadas"}</button>
+        </div>${data.pedidos.length ? vacationHistoryTable(data.pedidos, "planning") : `<div class="card empty-state"><div>${icon("search")}<h3>${state.vacationPlanningAll ? "Sem férias para estes filtros" : "Sem férias atuais ou futuras"}</h3><p>Altera os filtros ou inclui as férias passadas.</p></div></div>`}`;
+    }
+
     function vacationManagementQuery() {
         const selectedYear = state.vacationManagementTab === "rules"
             ? state.vacationHolidayYear : state.vacationYear;
@@ -1900,7 +1952,8 @@
 
     function drawVacationCalendar(management) {
         const data = state.vacationCalendar;
-        const root = management ? $("#vacation-management-root") : $("#my-vacations-root");
+        const planning = state.page === "vacation-planning";
+        const root = planning ? $("#vacation-planning-root") : management ? $("#vacation-management-root") : $("#my-vacations-root");
         if (!root || !data) return;
         const holidays = new Set((data.feriados || []).map((item) => item.data));
         const dayHeaders = data.dias.map((iso) => {
@@ -1922,19 +1975,37 @@
                     : special ? "vacation-calendar-special" : "";
             const cellAttrs = outsideMission
                 ? `title="Fora da missão"`
-                : mark ? `data-action="vacation-detail" data-id="${mark.feria_id}" title="${attr(mark.estado)}"` : "";
+                : mark ? `${planning ? "" : `data-action="vacation-detail" data-id="${mark.feria_id}"`} title="${attr(mark.estado)}"` : "";
             return `<td class="${cellClass}" ${cellAttrs}>${outsideMission ? "" : mark ? esc(mark.codigo) : ""}</td>`;
         }).join("")}</tr>`).join("");
         const legend = `<div class="vacation-calendar-legend"><span><b class="vacation-legend-code vacation-legend-code--f">F</b> Férias</span><span><b class="vacation-legend-code vacation-legend-code--td">TD</b> Viagem</span><span><b class="vacation-legend-code vacation-legend-code--fs">FS</b> Fim de semana / feriado</span><span><b class="vacation-legend-outside-mission"></b> Fora da missão</span><span><b class="vacation-legend-pending"></b> Decisão pendente</span></div>`;
         root.innerHTML = `<div class="vacation-calendar-toolbar">
             <div class="period-picker"><button class="icon-btn" data-action="vacation-month" data-delta="-1">${icon("left")}</button><strong>${esc(state.boot.config.meses[state.vacationMonth] || state.vacationMonth)} ${state.vacationYear}</strong><button class="icon-btn" data-action="vacation-month" data-delta="1">${icon("right")}</button></div>
-            <div class="vacation-calendar-toolbar__actions">${legend}${management ? `<button class="btn btn--secondary" data-action="vacation-calendar-print">${icon("print")} Imprimir mês</button>` : ""}</div>
+            <div class="vacation-calendar-toolbar__actions">${legend}${management ? `<button class="btn btn--secondary" data-action="vacation-calendar-print">${icon("print")} ${planning ? "Imprimir" : "Imprimir mês"}</button>${planning ? `<button class="btn btn--secondary" data-action="vacation-planning-mode" data-mode="list">${icon("grid")} Vista em lista</button>` : ""}` : ""}</div>
         </div><div class="card vacation-calendar-card"><div class="table-wrap"><table class="vacation-calendar-table"><thead><tr><th class="vacation-calendar-person">Pessoa</th>${dayHeaders}</tr></thead><tbody>${rows}</tbody>${management ? `<tfoot><tr><th class="vacation-calendar-person">AUSENTES</th>${data.dias.map((iso) => `<td title="${Math.round(data.diario[iso].percentagem)}% dos ativos">${data.diario[iso].ausentes}</td>`).join("")}</tr></tfoot>` : ""}</table></div></div>`;
+    }
+
+    function printVacationPlanningList() {
+        const root = $("#vacation-planning-root");
+        const table = $(".vacation-history-table", root);
+        if (!table) return toast("A lista de férias ainda não está disponível.", "warning");
+        $("#vacation-planning-print-report")?.remove();
+        const report = document.createElement("section");
+        report.id = "vacation-planning-print-report";
+        report.className = "vacation-calendar-print-report";
+        report.innerHTML = `<header class="vacation-calendar-print-header"><div><p>CONTINGENTE PORTUGUÊS · EUTM RCA</p><h1>Planeamento Geral · Lista de férias</h1></div><div><strong>${state.vacationPlanning?.pedidos?.length || 0} períodos</strong><small>Gerado em ${esc(new Intl.DateTimeFormat("pt-PT", {dateStyle: "short", timeStyle: "short"}).format(new Date()))}</small></div></header><div class="vacation-planning-print-table">${table.outerHTML}</div>`;
+        const originalTitle = document.title;
+        const cleanup = () => { document.body.classList.remove("vacation-planning-list-printing"); report.remove(); document.title = originalTitle; };
+        document.body.append(report);
+        document.body.classList.add("vacation-planning-list-printing");
+        document.title = "SIGCP_Planeamento_Geral_Lista_Ferias";
+        window.addEventListener("afterprint", cleanup, {once: true});
+        window.print();
     }
 
     function printVacationCalendar() {
         const data = state.vacationCalendar;
-        const root = $("#vacation-management-root");
+        const root = state.page === "vacation-planning" ? $("#vacation-planning-root") : $("#vacation-management-root");
         const table = $(".vacation-calendar-table", root);
         const legend = $(".vacation-calendar-legend", root);
         if (!data || !table || !legend) {
@@ -2968,10 +3039,32 @@
             await loadVacationManagement();
         }
         else if (action === "vacation-calendar-print") printVacationCalendar();
+        else if (action === "vacation-planning-print") printVacationPlanningList();
+        else if (action === "vacation-planning-mode") {
+            state.vacationPlanningMode = target.dataset.mode || "calendar";
+            await renderVacationPlanning();
+        }
+        else if (action === "vacation-planning-toggle-all") {
+            state.vacationPlanningAll = !state.vacationPlanningAll;
+            await loadVacationPlanning();
+        }
+        else if (action === "vacation-planning-filter-state") {
+            state.vacationPlanningFilters.statusGroup = target.dataset.state || "all";
+            await loadVacationPlanning();
+        }
+        else if (action === "vacation-planning-apply") {
+            state.vacationPlanningFilters.search = $("#planning-vacation-search")?.value.trim() || "";
+            state.vacationPlanningFilters.area = $("#planning-vacation-area")?.value || "";
+            await loadVacationPlanning();
+        }
+        else if (action === "vacation-planning-clear") {
+            state.vacationPlanningFilters = {search: "", statusGroup: "all", area: ""};
+            await loadVacationPlanning();
+        }
         else if (action === "vacation-month") {
             const current = new Date(state.vacationYear, state.vacationMonth - 1 + Number(target.dataset.delta || 0), 1);
             state.vacationYear = current.getFullYear(); state.vacationMonth = current.getMonth() + 1;
-            await loadVacationCalendar(state.page === "vacations");
+            await loadVacationCalendar(state.page === "vacations" || state.page === "vacation-planning");
         }
         else if (action === "vacation-person-edit") {
             openVacationPersonModal(state.vacationManagement?.pessoas.find((person) => person.id === Number(target.dataset.id)));

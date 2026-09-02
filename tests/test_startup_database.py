@@ -102,6 +102,36 @@ class StartupDatabaseTest(unittest.TestCase):
             set_path.assert_called_once_with(str(database))
             selector.assert_not_called()
 
+    def test_first_start_finds_local_database_before_supabase(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            database = Path(temp_dir) / "database.sqlite3"
+            sqlite3.connect(database).close()
+
+            with (
+                patch.dict(os.environ, {"SIGCP_DB_PATH": "", "PRT_WELFARE_DB_PATH": ""}),
+                patch.object(main.config, "_ler_config_local", return_value={"database_mode": "supabase"}),
+                patch.object(main.config, "existe_configuracao_do_utilizador", return_value=False),
+                patch.object(main.config, "localizar_base_dados_local", return_value=str(database)),
+                patch.object(main.config, "guardar_base_dados_local") as guardar,
+                patch.object(main.config, "garantir_base_dados_configurada") as selector,
+            ):
+                self.assertTrue(main.configurar_base_dados())
+
+            guardar.assert_called_once_with(str(database))
+            selector.assert_not_called()
+
+    def test_first_start_without_local_database_opens_selector(self):
+        with (
+            patch.dict(os.environ, {"SIGCP_DB_PATH": "", "PRT_WELFARE_DB_PATH": ""}),
+            patch.object(main.config, "_ler_config_local", return_value={"database_mode": "supabase"}),
+            patch.object(main.config, "existe_configuracao_do_utilizador", return_value=False),
+            patch.object(main.config, "localizar_base_dados_local", return_value=""),
+            patch.object(main.config, "garantir_base_dados_configurada", return_value=True) as selector,
+        ):
+            self.assertTrue(main.configurar_base_dados())
+
+        selector.assert_called_once_with()
+
     def test_missing_database_opens_selector_and_persists_choice(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)

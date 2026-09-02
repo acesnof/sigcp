@@ -2013,6 +2013,22 @@ def create_web_app():
             )
         )
 
+    @app.get("/api/vacations/planning")
+    @_login_required
+    def api_vacation_planning(_user):
+        show_all = request.args.get("todos", "").strip().lower() in {"1", "true", "sim"}
+        payload = vacations.management_payload(
+            status_group=str(request.args.get("grupo_estado") or "all"),
+            search=str(request.args.get("pesquisa") or ""),
+            area=str(request.args.get("area") or ""),
+            show_all=show_all,
+        )
+        return _json_ok(data={
+            "pedidos": payload["pedidos"],
+            "areas": payload["areas"],
+            "mostrar_tudo": payload["mostrar_tudo"],
+        })
+
     # Compatibilidade com o endereço usado pela primeira versão web.
     @app.get("/api/vacations")
     @_vacation_manager_required
@@ -2024,8 +2040,6 @@ def create_web_app():
     def api_vacations_calendar(user):
         ano, mes = _periodo()
         all_people = request.args.get("scope") == "all"
-        if all_people and not _pode_ver_gestao_ferias(user):
-            raise ApiError("Não tens acesso ao calendário global de férias.", 403)
         member_id = None if all_people else user["id"]
         if member_id and int(user.get("master") or 0):
             raise ApiError("O utilizador mestre não possui férias individuais.", 403)
