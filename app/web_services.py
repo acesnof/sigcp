@@ -347,10 +347,9 @@ def calcular_distribuicao_xfa(
         denominacao * quantidade
         for denominacao, quantidade in stock_normalizado.items()
     )
-    if total_disponivel < total_necessario:
+    if total_disponivel <= 0:
         raise ValueError(
-            "Valor disponível insuficiente. "
-            f"Disponível: {total_disponivel:,} | Necessário: {total_necessario:,}"
+            "Indica o número de notas disponíveis para iniciar o cálculo."
         )
 
     calculador = XfaDistributionWindow.__new__(XfaDistributionWindow)
@@ -370,6 +369,11 @@ def calcular_distribuicao_xfa(
                 "identificacao": calculador._formatar_identificacao(linha),
                 "valor": linha["reimbursement"],
                 "notas": {str(chave): valor for chave, valor in combo.items()},
+                "valor_em_falta": max(
+                    0,
+                    int(linha["reimbursement"])
+                    - sum(int(denominacao) * int(quantidade or 0) for denominacao, quantidade in combo.items()),
+                ),
             }
             for linha, combo in resultados
         ],

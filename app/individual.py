@@ -2142,7 +2142,7 @@ class WelfareIndividualWindow:
         XfaDistributionWindow(self)
 
 
-    def _dados_service_note(self):
+    def _dados_service_note(self, utilizadores_override=None):
         """Prepara dados para a Service Note.
 
         Exclui militares com data de partida no mês da Service Note.
@@ -2152,8 +2152,9 @@ class WelfareIndividualWindow:
         """
         pessoas = []
 
-        for user in self.utilizadores:
-            if self._date_in_mes_export(user.get("data_partida")):
+        utilizadores_base = utilizadores_override if utilizadores_override is not None else self.utilizadores
+        for user in utilizadores_base:
+            if utilizadores_override is None and self._date_in_mes_export(user.get("data_partida")):
                 continue
 
             datas = []
@@ -2228,8 +2229,11 @@ class WelfareIndividualWindow:
         except Exception:
             return "0"
 
-    def _totais_request_para_export(self):
-        linhas = self._dados_reembolso_para_export(hoto=False)
+    def _totais_request_para_export(self, utilizadores_override=None):
+        linhas = self._dados_reembolso_para_export(
+            hoto=False,
+            utilizadores_override=utilizadores_override,
+        )
         total_reimb = sum(int(l.get("reimbursement") or 0) for l in linhas)
         valor = self.valor_welfare_numero()
         total_meals = int(total_reimb / valor) if valor else 0
@@ -2539,9 +2543,9 @@ class WelfareIndividualWindow:
 
             partida_no_mes = self._date_in_mes_export(user.get("data_partida"))
 
-            # Exportação normal: exclui quem tem partida no mês.
-            # Exportação HOTO: usa exatamente a seleção validada na tabela.
-            if not hoto and partida_no_mes:
+            # Sem uma seleção explícita, a exportação normal exclui quem parte
+            # no mês. Com seleção, usa sempre exatamente as pessoas escolhidas.
+            if not hoto and utilizadores_override is None and partida_no_mes:
                 continue
 
             welfare, cohesion, reimbursement = self.calcular_resumo_user(user)
@@ -3182,6 +3186,43 @@ class XfaDistributionWindow:
             return None
         return dp[alvo][1]
 
+    def _combo_dp_ate_valor(self, valor, stock, preferencia="baixas"):
+        """Devolve a maior combinação de notas que não ultrapassa o valor."""
+        denoms = self.DENOMINACOES
+        if valor <= 0:
+            return {d: 0 for d in denoms}
+
+        alvo = valor // 500
+        unidades = {d: d // 500 for d in denoms}
+        opcoes_por_denom = []
+        for d in denoms:
+            max_qtd = min(int(stock.get(d, 0) or 0), alvo // unidades[d])
+            opcoes_por_denom.append((d, max_qtd))
+
+        dp = {0: ((0, 0), {d: 0 for d in denoms})}
+        for d, max_qtd in opcoes_por_denom:
+            u = unidades[d]
+            novo = {}
+            for soma, (score_atual, combo_atual) in dp.items():
+                for qtd in range(max_qtd + 1):
+                    nova_soma = soma + qtd * u
+                    if nova_soma > alvo:
+                        break
+                    combo = dict(combo_atual)
+                    combo[d] = qtd
+                    if preferencia == "baixas":
+                        peso = {500: 1, 1000: 2, 2000: 4, 5000: 10, 10000: 20}.get(d, d // 500)
+                    else:
+                        peso = {10000: 1, 5000: 2, 2000: 5, 1000: 10, 500: 20}.get(d, d // 500)
+                    pontuacao = (score_atual[0] + qtd * peso, score_atual[1] + qtd)
+                    atual = novo.get(nova_soma)
+                    if atual is None or pontuacao < atual[0]:
+                        novo[nova_soma] = (pontuacao, combo)
+            dp = novo
+
+        melhor_soma = max(dp)
+        return dp[melhor_soma][1]
+
     def _combo_dp_proporcional(self, valor, stock, target, preferir_baixas=True):
         """Escolhe uma combinação exata aproximando a quota proporcional.
 
@@ -3319,12 +3360,16 @@ class XfaDistributionWindow:
                     combo = self._combo_dp_para_valor(amount, stock_atual, preferencia="baixas" if preferir_baixas else "altas")
 
                 if combo is None:
-                    combo = {d: 0 for d in denoms}
-                    remaining = amount
-                else:
-                    remaining = 0
-                    for d in denoms:
-                        stock_atual[d] = int(stock_atual.get(d, 0) or 0) - int(combo.get(d, 0) or 0)
+                    combo = self._combo_dp_ate_valor(
+                        amount,
+                        stock_atual,
+                        preferencia="baixas" if preferir_baixas else "altas",
+                    )
+
+                paid = sum(d * int(combo.get(d, 0) or 0) for d in denoms)
+                remaining = amount - paid
+                for d in denoms:
+                    stock_atual[d] = int(stock_atual.get(d, 0) or 0) - int(combo.get(d, 0) or 0)
 
             resultados_tmp.append({
                 "idx_original": idx_original,

@@ -1,2 +1,0 @@
-Comando para compilação:
-pyinstaller --noconfirm --clean --windowed --icon=docs\favicon.ico --name PRT_Welfare main.py

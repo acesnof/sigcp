@@ -3,7 +3,7 @@ DADOS SUPABASE
 Site: https://supabase.com/dashboard/sign-in
 
 email: eutmrcaciscell@gmail.com
-password: Porto12345##
+password: C0nt1ng3nt3tug@
 
 
 Projeto: SIGCP

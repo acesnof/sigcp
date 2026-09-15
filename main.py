@@ -13,6 +13,7 @@ import time
 import tkinter as tk
 import urllib.request
 import webbrowser
+from contextlib import closing
 from datetime import datetime
 from pathlib import Path
 
@@ -23,6 +24,25 @@ _backup_lock = threading.Lock()
 DEFAULT_SERVER_PORT = 52147
 UPDATE_NOTES_FILENAME = "SIGCP_alteracoes.txt"
 UPDATE_NOTES_FALLBACK = "- Melhorias e correções incluídas na nova versão."
+
+
+def _traduzir_mensagem(texto):
+    # O arranque pode ainda não ter importado app.db ou inicializado o esquema.
+    # Lê a preferência sem criar ficheiros nem alterar o caminho usado por app.db.
+    lingua = "pt"
+    try:
+        uri = Path(config.DB_PATH).resolve().as_uri()
+        if uri.startswith("file://") and not uri.startswith("file:///"):
+            uri = "file:////" + uri[len("file://"):]
+        uri += "?mode=ro"
+        with closing(sqlite3.connect(uri, uri=True, timeout=0.2)) as conn:
+            row = conn.execute("SELECT valor FROM app_settings WHERE chave='lingua'").fetchone()
+            if row and row[0] == "en":
+                lingua = "en"
+    except (sqlite3.Error, OSError, ValueError):
+        pass
+    from app.web_i18n import translate
+    return translate(texto, lang=lingua)
 
 
 def _utilizador_real_windows():
@@ -65,9 +85,9 @@ def _interromper_reabertura_de_atualizador_antigo():
     if not _ambiente_de_reabertura_legada():
         return False
     config.messagebox.showinfo(
-        "Atualização do SIGCP",
-        "A atualização foi concluída.\n\n"
-        "Já pode abrir normalmente a nova versão do SIGCP.",
+        _traduzir_mensagem("Atualização do SIGCP"),
+        _traduzir_mensagem("A atualização foi concluída.\n\n"
+                           "Já pode abrir normalmente a nova versão do SIGCP."),
     )
     return True
 
@@ -89,9 +109,9 @@ def _ler_alteracoes_publicadas(executavel_publicado):
     try:
         texto = caminho.read_text(encoding="utf-8-sig").strip()
     except (OSError, UnicodeError):
-        return UPDATE_NOTES_FALLBACK
+        return _traduzir_mensagem(UPDATE_NOTES_FALLBACK)
     if not texto:
-        return UPDATE_NOTES_FALLBACK
+        return _traduzir_mensagem(UPDATE_NOTES_FALLBACK)
     # Evita que um ficheiro externo anormalmente grande torne a caixa inutilizável.
     return texto[:4000].rstrip()
 
@@ -127,19 +147,20 @@ def _agendar_substituicao_executavel(origem, destino):
         "Start-Sleep -Milliseconds 500 } }; "
         "Remove-Item -LiteralPath $tmp -Force -ErrorAction SilentlyContinue; "
         "if($ok){ Remove-Item -LiteralPath $src -Force -ErrorAction SilentlyContinue; "
-        "$message='A atualização foi concluída. Pode abrir normalmente a aplicação SIGCP.'; "
+        f"$message={_ps_literal(_traduzir_mensagem('A atualização foi concluída. Pode abrir normalmente a aplicação SIGCP.'))}; "
         "$icon='Information'; $status='SUCESSO' } else { "
-        "$message='Não foi possível concluir a atualização do SIGCP.'; "
+        f"$message={_ps_literal(_traduzir_mensagem('Não foi possível concluir a atualização do SIGCP.'))}; "
         "$icon='Error'; $status='ERRO: '+$detail }; "
         "try { Add-Content -LiteralPath $log -Value "
         "((Get-Date -Format 'yyyy-MM-dd HH:mm:ss')+' '+$status) -Encoding UTF8 "
         "} catch {}; "
+        f"$title={_ps_literal(_traduzir_mensagem('Atualização do SIGCP'))}; "
         "try { Add-Type -AssemblyName System.Windows.Forms; "
-        "[System.Windows.Forms.MessageBox]::Show($message, 'Atualização do SIGCP', "
+        "[System.Windows.Forms.MessageBox]::Show($message, $title, "
         "[System.Windows.Forms.MessageBoxButtons]::OK, "
         "[System.Windows.Forms.MessageBoxIcon]$icon) | Out-Null "
         "} catch { try { $shell=New-Object -ComObject WScript.Shell; "
-        "$shell.Popup($message, 0, 'Atualização do SIGCP', 0) | Out-Null } catch {} }"
+        "$shell.Popup($message, 0, $title, 0) | Out-Null } catch {} }"
     )
     ambiente = {
         chave: valor
@@ -185,7 +206,7 @@ def _confirmar_atualizacao_obrigatoria():
     raiz = tk.Tk()
     raiz.withdraw()
     janela = tk.Toplevel(raiz)
-    janela.title("Atualização obrigatória do SIGCP")
+    janela.title(_traduzir_mensagem("Atualização obrigatória do SIGCP"))
     janela.resizable(False, False)
     janela.transient(raiz)
 
@@ -193,7 +214,7 @@ def _confirmar_atualizacao_obrigatoria():
     corpo.pack(fill="both", expand=True)
     tk.Label(
         corpo,
-        text=(
+        text=_traduzir_mensagem(
             "A aplicação tem de ser atualizada para poder ser utilizada.\n\n"
             "Pode fechar agora ou voltar atrás e fazer a atualização."
         ),
@@ -209,10 +230,10 @@ def _confirmar_atualizacao_obrigatoria():
         janela.destroy()
 
     tk.Button(
-        botoes, text="Fechar", width=12, command=lambda: concluir(False)
+        botoes, text=_traduzir_mensagem("Fechar"), width=12, command=lambda: concluir(False)
     ).pack(side="left", padx=(0, 10))
     botao_atualizar = tk.Button(
-        botoes, text="Atualizar", width=12, command=lambda: concluir(True)
+        botoes, text=_traduzir_mensagem("Atualizar"), width=12, command=lambda: concluir(True)
     )
     botao_atualizar.pack(side="left")
     janela.protocol("WM_DELETE_WINDOW", lambda: concluir(False))
@@ -265,17 +286,17 @@ def verificar_atualizacao():
         # Uma partilha temporariamente indisponível não impede o arranque.
         return False
 
-    versao_disponivel = config.get_executable_version(publicado) or "desconhecida"
+    versao_disponivel = config.get_executable_version(publicado) or _traduzir_mensagem("desconhecida")
     alteracoes = _ler_alteracoes_publicadas(publicado)
     atualizar = config.messagebox.askyesno(
         f"{config.APP_NAME} {config.APP_VERSION}",
-        "A versão instalada está desatualizada.\n\n"
+        _traduzir_mensagem("A versão instalada está desatualizada.\n\n"
         f"Versão instalada: {config.APP_VERSION}\n"
         f"Versão disponível: {versao_disponivel}\n\n"
         "Principais atualizações:\n"
         f"{alteracoes}\n\n"
         "Deseja atualizar agora?\n\n"
-        f"Origem: {publicado}",
+        f"Origem: {publicado}"),
     )
     if not atualizar:
         atualizar = _confirmar_atualizacao_obrigatoria()
@@ -286,8 +307,8 @@ def verificar_atualizacao():
         _agendar_substituicao_executavel(publicado, local)
     except Exception as exc:
         config.messagebox.showerror(
-            "Atualização do SIGCP",
-            f"Não foi possível preparar a atualização:\n\n{exc}",
+            _traduzir_mensagem("Atualização do SIGCP"),
+            _traduzir_mensagem(f"Não foi possível preparar a atualização:\n\n{exc}"),
         )
         # Não inicia uma versão que já se sabe estar desatualizada.
         return True
@@ -527,9 +548,9 @@ def configurar_base_dados():
             config.DATABASE_OFFLINE = True
             config.messagebox.showwarning(
                 config.APP_NAME,
-                f"{exc}\n\nA aplicação será aberta em modo offline. "
+                _traduzir_mensagem(f"{exc}\n\nA aplicação será aberta em modo offline. "
                 "A conta de superadministrador continua disponível, mas não "
-                "será possível alterar os dados online até a ligação regressar.",
+                "será possível alterar os dados online até a ligação regressar."),
             )
         return True
     caminho_guardado = configuracao.get("database_path")
@@ -696,7 +717,7 @@ if __name__ == "__main__":
         try:
             config.messagebox.showerror(
                 config.APP_NAME,
-                f"Não foi possível iniciar a aplicação:\n\n{exc}",
+                _traduzir_mensagem(f"Não foi possível iniciar a aplicação:\n\n{exc}"),
             )
         except Exception:
             raise

@@ -12,6 +12,7 @@ a = Analysis(
         ('docs', 'docs'),
         ('app\\templates', 'app\\templates'),
         ('app\\static', 'app\\static'),
+        ('app\\translations', 'app\\translations'),
     ],
     hiddenimports=[],
     hookspath=[],

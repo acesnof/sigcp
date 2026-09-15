@@ -92,14 +92,12 @@ from app.db import (
     set_welfares_individuais,
 )
 from app.i18n import months, weekdays_short
+from app.web_i18n import ENGLISH, language, translate, translate_messages
 from app.person_order import person_order_key
 from app.print_utils import gerar_pdf_mes
 from app.reports.individual_pdf import gerar_pdf_welfare_individual
 from app.reports.reimbursement_xlsx import gerar_reembolso_mensal
-from app.reports.request_docx import (
-    gerar_request_welfare_meals,
-    gerar_request_welfare_meals_hoto,
-)
+from app.reports.request_docx import gerar_request_welfare_meals
 from app.reports.service_note_docx import gerar_service_note
 from app.reports.weekly_xlsx import gerar_meals_request_weekly
 from app.reports.vacations_xlsx import generate_vacations_xlsx
@@ -587,6 +585,20 @@ def create_web_app():
         static_url_path="/static",
     )
     app.secret_key = secrets.token_bytes(32)
+    @app.context_processor
+    def translation_context():
+        return {"language": language(), "web_t": translate, "translations": ENGLISH}
+
+    @app.after_request
+    def localize_messages(response):
+        if (response.is_json and request.path.startswith("/api/")
+                and not response.direct_passthrough
+                and "attachment" not in response.headers.get("Content-Disposition", "")):
+            payload = response.get_json(silent=True)
+            if isinstance(payload, dict):
+                response.set_data(app.json.dumps(translate_messages(payload)))
+        return response
+
     app.config.update(
         SESSION_COOKIE_HTTPONLY=True,
         SESSION_COOKIE_SAMESITE="Strict",
@@ -833,7 +845,7 @@ def create_web_app():
     def api_bootstrap():
         user = _current_user()
         if not user:
-            return _json_ok(authenticated=False)
+            return _json_ok(authenticated=False, language=get_lingua())
 
         acessos = sorted(_acessos(user))
         unread_vacations = db_rows(
@@ -2681,26 +2693,21 @@ def create_web_app():
             )
 
         selecionados = None
-        data_fim_override = None
-        if tipo in ("excel_hoto", "request_hoto"):
-            selecionados = service.validar_selecao_hoto(
+        if tipo in ("excel_reembolso", "service_note", "request"):
+            selecionados = service.utilizadores_por_ids(
                 dados.get("utilizador_ids") or []
             )
+            if not selecionados:
+                raise ApiError("Seleciona pelo menos uma pessoa.")
 
-        if tipo in ("excel_reembolso", "excel_hoto"):
-            hoto = tipo == "excel_hoto"
-            if hoto:
-                data_fim_override = service._data_partida_hoto_excel(
-                    selecionados[0]
-                )
+        if tipo == "excel_reembolso":
             linhas = service._dados_reembolso_para_export(
-                hoto=hoto,
-                utilizadores_override=selecionados if hoto else None,
+                hoto=False,
+                utilizadores_override=selecionados,
             )
             if not linhas:
                 raise ApiError("Não existem registos para exportar.")
-            prefixo = "Meals_reimbursment_HOTO" if hoto else "Meals_reimbursment"
-            nome = f"{prefixo}_{_nome_mes_en(mes)}{ano}.xlsx"
+            nome = f"Meals_reimbursment_{_nome_mes_en(mes)}{ano}.xlsx"
             return _download_gerado(
                 nome,
                 ".xlsx",
@@ -2712,12 +2719,14 @@ def create_web_app():
                     mes=mes,
                     linhas=linhas,
                     senior_assinatura=get_snr_unico_para_assinatura(),
-                    data_fim_override=data_fim_override,
+                    data_fim_override=None,
                 ),
             )
 
         if tipo == "service_note":
-            dates_cohesion, individual_cohesion = service._dados_service_note()
+            dates_cohesion, individual_cohesion = service._dados_service_note(
+                utilizadores_override=selecionados
+            )
             hoje = date.today()
             nome = (
                 f"{hoje:%Y%m%d}_UNC_EDP_PT_SNR_SN_"
@@ -2738,63 +2747,29 @@ def create_web_app():
                 ),
             )
 
-        if tipo in ("request", "request_hoto"):
+        if tipo == "request":
             responsavel = get_responsavel_welfare_mais_antigo_ativo()
             senior = get_snr_unico_para_assinatura()
-            if tipo == "request":
-                total_reimb, total_meals = service._totais_request_para_export()
-                nome = f"_{mes:02d}_{str(ano)[-2:]}_Request Welfare meals.docx"
-                gerador = lambda caminho: gerar_request_welfare_meals(
-                    docs_dir=DOCS_DIR,
-                    destino=caminho,
-                    ano=ano,
-                    mes=mes,
-                    responsavel_welfare=service._identificacao_posto_nome_sobrenome(
-                        responsavel
-                    ),
-                    telefone_servico=(
-                        responsavel.get("telemovel_servico") if responsavel else ""
-                    )
-                    or "",
-                    total_reimb=service._formatar_valor_espacos(total_reimb),
-                    total_meals=total_meals,
-                    senior_prt=service._identificacao_posto_nome_sobrenome(senior),
+            total_reimb, total_meals = service._totais_request_para_export(
+                utilizadores_override=selecionados
+            )
+            nome = f"_{mes:02d}_{str(ano)[-2:]}_Request Welfare meals.docx"
+            gerador = lambda caminho: gerar_request_welfare_meals(
+                docs_dir=DOCS_DIR,
+                destino=caminho,
+                ano=ano,
+                mes=mes,
+                responsavel_welfare=service._identificacao_posto_nome_sobrenome(
+                    responsavel
+                ),
+                telefone_servico=(
+                    responsavel.get("telemovel_servico") if responsavel else ""
                 )
-            else:
-                total_reimb = 0
-                total_meals = 0
-                for item in selecionados:
-                    _welfare, _cohesion, reimbursement = (
-                        service.calcular_resumo_user(item)
-                    )
-                    total_reimb += int(reimbursement or 0)
-                    valor = service.valor_welfare_numero()
-                    total_meals += int((reimbursement or 0) / valor) if valor else 0
-                pessoas = "; ".join(
-                    service.identificacao_curta(item) for item in selecionados
-                ) + ";"
-                partida = service._data_partida_hoto_formatada(selecionados[0])
-                nome = (
-                    f"_{mes:02d}_{str(ano)[-2:]}_Request Welfare meals HOTO.docx"
-                )
-                gerador = lambda caminho: gerar_request_welfare_meals_hoto(
-                    docs_dir=DOCS_DIR,
-                    destino=caminho,
-                    ano=ano,
-                    mes=mes,
-                    responsavel_welfare=service._identificacao_posto_nome_sobrenome(
-                        responsavel
-                    ),
-                    telefone_servico=(
-                        responsavel.get("telemovel_servico") if responsavel else ""
-                    )
-                    or "",
-                    total_reimb=service._formatar_valor_espacos(total_reimb),
-                    total_meals=total_meals,
-                    senior_prt=service._identificacao_posto_nome_sobrenome(senior),
-                    pessoas_hoto=pessoas,
-                    data_inicio_override=partida,
-                )
+                or "",
+                total_reimb=service._formatar_valor_espacos(total_reimb),
+                total_meals=total_meals,
+                senior_prt=service._identificacao_posto_nome_sobrenome(senior),
+            )
             return _download_gerado(
                 nome,
                 ".docx",
@@ -2814,13 +2789,16 @@ def create_web_app():
         dados = _body()
         ano, mes = _periodo(dados.get("ano"), dados.get("mes"))
         service = IndividualService(ano, mes, user)
-        resultado = calcular_distribuicao_xfa(
-            service,
-            dados.get("utilizador_ids") or [],
-            dados.get("stock") or {},
-            str(dados.get("tipo_valor") or "reembolso"),
-            dados.get("valores_manuais"),
-        )
+        try:
+            resultado = calcular_distribuicao_xfa(
+                service,
+                dados.get("utilizador_ids") or [],
+                dados.get("stock") or {},
+                str(dados.get("tipo_valor") or "reembolso"),
+                dados.get("valores_manuais"),
+            )
+        except ValueError as exc:
+            raise ApiError(str(exc))
         return _json_ok(data=resultado)
 
     @app.get("/api/export/database.json")
