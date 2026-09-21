@@ -732,6 +732,10 @@ svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width:
     background: #bce1fa;
     color: #0c67a5;
 }
+.vacation-admin-edit-btn { min-width: 29px; padding-inline: 7px !important; border-color: #e2bd62; background: #fff3c9; color: #805b08; }
+.vacation-admin-edit-btn:hover { border-color: #d3a73c; background: #ffe59a; color: #624605; }
+.vacation-request-card > footer .vacation-admin-edit-btn { margin-left: auto; }
+.vacation-request-card > footer .vacation-admin-edit-btn + .vacation-update-hours-btn { margin-left: 0; }
 .vacation-request-card > footer .vacation-update-hours-btn { margin-left: auto; }
 .vacation-filterbar { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 14px; padding: 12px; }
 .vacation-filterbar .search-box { flex: 0 1 285px; min-width: 215px; }

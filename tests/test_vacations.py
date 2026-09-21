@@ -169,6 +169,39 @@ class VacationWorkflowTest(unittest.TestCase):
             ],
         )
 
+    def test_admin_can_fully_edit_any_vacation_request(self):
+        admin_id = self.create_user("admin_edita_ferias", acesso="Administrador")
+        _boot, person_headers = self.login("militar")
+        vacation_id = self.create_request(person_headers)
+        self.logout(person_headers)
+
+        _boot, admin_headers = self.login("admin_edita_ferias")
+        updated = self.client.put(
+            f"/api/vacations/{vacation_id}/admin-edit",
+            json={
+                "utilizador_id": self.snr_id,
+                "data_hora_inicio": "2026-07-11T19:15",
+                "data_hora_fim": "2026-07-18T09:45",
+                "companhia_aerea": "TP 456",
+                "observacao": "Regularização administrativa",
+                "accept_warnings": True,
+            },
+            headers=admin_headers,
+        )
+        self.assertEqual(200, updated.status_code, updated.get_json())
+        row = db.db_one("SELECT * FROM ferias WHERE id=?", (vacation_id,))
+        self.assertEqual(self.snr_id, row["utilizador_id"])
+        self.assertEqual("2026-07-11 19:15", row["data_hora_inicio"])
+        self.assertEqual("2026-07-18 09:45", row["data_hora_fim"])
+        self.assertEqual("TP 456", row["companhia_aerea"])
+        self.assertEqual("Regularização administrativa", row["observacao"])
+        history = db.db_one(
+            "SELECT utilizador_id, acao FROM ferias_historico WHERE feria_id=? ORDER BY id DESC LIMIT 1",
+            (vacation_id,),
+        )
+        self.assertEqual(admin_id, history["utilizador_id"])
+        self.assertEqual("Pedido alterado pelo administrador", history["acao"])
+
     def test_private_area_snr_management_approval_and_welfare_reflection(self):
         boot, person_headers = self.login("militar")
         self.assertTrue(boot["permissions"]["ferias_privadas"])

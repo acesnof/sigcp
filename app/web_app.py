@@ -2111,6 +2111,18 @@ def create_web_app():
             message="Pedido corrigido e submetido novamente.",
         )
 
+    @app.put("/api/vacations/<int:feria_id>/admin-edit")
+    @_admin_required
+    def api_admin_update_vacation(user, feria_id):
+        dados = _body()
+        validation = vacations.admin_update_request(
+            user, feria_id, dados, accept_warnings=bool(dados.get("accept_warnings"))
+        )
+        return _json_ok(
+            warnings=validation["warnings"],
+            message="Pedido de férias atualizado pelo administrador.",
+        )
+
     @app.delete("/api/vacations/<int:feria_id>")
     @_login_required
     def api_delete_vacation(user, feria_id):

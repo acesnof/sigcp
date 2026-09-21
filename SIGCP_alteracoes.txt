@@ -1,3 +1,1 @@
-- Distribuição XFA com resumo das pessoas selecionadas, totais de notas e indicação de valores em falta quando não existe uma combinação exata.
-- Excel Reembolso, Service Note e Request preenchidos exclusivamente com as pessoas selecionadas no Welfare Individual.
-- Melhorias visuais e de interação na grelha do Welfare Individual.
+- Foram feitas atualizações gráficas para melhoramento da interface gráfica.

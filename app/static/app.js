@@ -1653,8 +1653,15 @@
             actions.push(`<button class="btn btn--small btn--success" data-action="vacation-decision" data-id="${item.id}" data-workflow="cancellation" data-decision="approve">${icon("check")} ${t("Aprovar cancelamento")}</button>`);
             actions.push(`<button class="btn btn--small btn--ghost-danger" data-action="vacation-decision" data-id="${item.id}" data-workflow="cancellation" data-decision="reject">${t("Rejeitar")}</button>`);
         }
+        const adminEdit = context === "management" && state.boot.permissions.admin
+            ? `<button class="btn btn--small btn--warning vacation-admin-edit-btn" data-action="vacation-admin-edit" data-id="${item.id}" title="${t("Editar pedido")}" aria-label="${t("Editar pedido")}">${icon("edit")}</button>`
+            : "";
         if (context === "management" && state.boot.permissions.ferias_atualizar_horas && item.estado === "Aprovado") {
+            if (!state.vacationManagementAll) actions.push(adminEdit);
             actions.push(`<button class="btn btn--small btn--warning vacation-update-hours-btn" data-action="vacation-update-hours" data-id="${item.id}">${icon("clock")} ${t("Atualizar Horas")}</button>`);
+            if (state.vacationManagementAll) actions.push(adminEdit);
+        } else if (adminEdit) {
+            actions.push(adminEdit);
         }
         if (context === "management" && state.boot.permissions.admin && !own && item.estado === "Aprovado") {
             actions.push(`<button class="btn btn--small btn--ghost-danger" data-action="vacation-annul" data-id="${item.id}">${t("Anular autorização")}</button>`);
@@ -2202,6 +2209,7 @@
     function openVacationModal(period = null, presetUserId = null, mode = "request") {
         const management = state.page === "vacations";
         const changing = mode === "change";
+        const adminEditing = mode === "admin-edit";
         const allPeople = state.vacationManagement?.pessoas || [];
         const people = management && !period && !changing ? vacationRequestPeople() : allPeople;
         const requestedUserId = Number(presetUserId || period?.utilizador_id || (management ? people[0]?.id : state.boot.user.id));
@@ -2210,11 +2218,11 @@
             : Number(people[0]?.id || state.boot.user.id);
         let warningsAccepted = false;
         openModal({
-            title: changing ? t("Pedir alteração de férias") : period ? t("Corrigir pedido de férias") : t("Novo pedido de férias"),
+            title: adminEditing ? t("Editar pedido de férias") : changing ? t("Pedir alteração de férias") : period ? t("Corrigir pedido de férias") : t("Novo pedido de férias"),
             subtitle: t("Indica a partida e a chegada completas; as horas afetam automaticamente o Welfare Individual."),
             size: "wide",
             body: `<form id="vacation-form" class="form-grid">
-                ${management && !changing ? `<label class="field field--full"><span class="required">${t("Pessoa")}</span><select name="utilizador_id">${people.map((person) => `<option value="${person.id}" ${userId === person.id ? "selected" : ""}>${esc(person.identificacao)} · ${esc(person.nim)}</option>`).join("")}</select></label>` : ""}
+                ${management && (!changing || adminEditing) ? `<label class="field field--full"><span class="required">${t("Pessoa")}</span><select name="utilizador_id">${people.map((person) => `<option value="${person.id}" ${userId === person.id ? "selected" : ""}>${esc(person.identificacao)} · ${esc(person.nim)}</option>`).join("")}</select></label>` : ""}
                 ${dateTimeField("data_hora_inicio", t("Partida · data e hora"), period?.data_hora_inicio, {required: true, help: t("Momento em que sai da base.")})}
                 ${dateTimeField("data_hora_fim", t("Chegada · data e hora"), period?.data_hora_fim, {required: true, help: t("Momento em que regressa à base.")})}
                 <label class="field field--full"><span>${t("Companhia aérea / voo")}</span><input name="companhia_aerea" maxlength="120" value="${attr(period?.companhia_aerea || "")}" placeholder="${t("Ex.: TAP TP123")}"></label>
@@ -2222,7 +2230,7 @@
                 ${changing ? `<label class="field field--full"><span class="required">${t("Motivo da alteração")}</span><textarea name="reason" maxlength="1000" required></textarea></label>` : ""}
                 <div id="vacation-form-warnings" class="field--full"></div>
             </form>`,
-            footer: `<button class="btn btn--secondary" data-modal-close>${t("Fechar")}</button><button class="btn btn--primary" type="submit" form="vacation-form">${icon("check")} ${changing ? t("Submeter alteração") : period ? t("Reenviar pedido") : t("Submeter pedido")}</button>`,
+            footer: `<button class="btn btn--secondary" data-modal-close>${t("Fechar")}</button><button class="btn btn--primary" type="submit" form="vacation-form">${icon("check")} ${adminEditing ? t("Guardar alterações") : changing ? t("Submeter alteração") : period ? t("Reenviar pedido") : t("Submeter pedido")}</button>`,
             onOpen(modal) {
                 const vacationForm = $("#vacation-form", modal);
                 vacationForm.addEventListener("input", () => {
@@ -2236,7 +2244,7 @@
                     if (!management) payload.utilizador_id = state.boot.user.id;
                     if (changing) payload.utilizador_id = period.utilizador_id;
                     payload.accept_warnings = warningsAccepted;
-                    const url = changing ? `/api/vacations/${period.id}/change-request` : period ? `/api/vacations/${period.id}` : "/api/vacations";
+                    const url = adminEditing ? `/api/vacations/${period.id}/admin-edit` : changing ? `/api/vacations/${period.id}/change-request` : period ? `/api/vacations/${period.id}` : "/api/vacations";
                     const method = changing ? "POST" : period ? "PUT" : "POST";
                     setLoading(true);
                     try {
@@ -2988,6 +2996,10 @@
         else if (action === "vacation-edit") {
             const period = findVacation(target.dataset.id);
             if (period) openVacationModal(period, period.utilizador_id);
+        }
+        else if (action === "vacation-admin-edit") {
+            const period = findVacation(target.dataset.id);
+            if (period) openVacationModal(period, period.utilizador_id, "admin-edit");
         }
         else if (action === "vacation-change") {
             const period = findVacation(target.dataset.id);

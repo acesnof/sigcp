@@ -764,6 +764,51 @@ def update_request(actor, vacation_id, values, *, accept_warnings=False):
         conn.close()
 
 
+def admin_update_request(actor, vacation_id, values, *, accept_warnings=False):
+    """Atualiza diretamente qualquer pedido por intervenção administrativa."""
+    existing = db.db_one("SELECT * FROM ferias WHERE id = ?", (int(vacation_id),))
+    if not existing:
+        raise VacationValidationError("Pedido não encontrado.")
+    try:
+        target_id = int(values.get("utilizador_id"))
+    except (TypeError, ValueError):
+        raise VacationValidationError("Seleciona uma pessoa.")
+    if not _member(target_id):
+        raise VacationValidationError("Pessoa não encontrada.")
+
+    payload = dict(values)
+    payload["utilizador_id"] = target_id
+    candidate, validation = require_valid(payload, current_id=vacation_id, accept_warnings=accept_warnings)
+    previous_status = existing["estado"]
+    next_status = STATUS_APPROVED if previous_status in {STATUS_CHANGE_PENDING, STATUS_CANCEL_PENDING} else previous_status
+    stamp = now_db()
+    conn = db._connect()
+    try:
+        conn.execute("BEGIN IMMEDIATE")
+        conn.execute(
+            """
+            UPDATE ferias SET utilizador_id=?, data_hora_inicio=?, data_hora_fim=?,
+                observacao=?, companhia_aerea=?, estado=?,
+                proposta_data_hora_inicio=NULL, proposta_data_hora_fim=NULL,
+                motivo_fluxo=NULL, fluxo_pedido_por=NULL, avisos_aceites=?, atualizado_em=?
+            WHERE id=?
+            """,
+            (target_id, candidate["data_hora_inicio"], candidate["data_hora_fim"],
+             candidate["observacao"], candidate["companhia_aerea"], next_status,
+             json.dumps(validation["warnings"], ensure_ascii=False), stamp, int(vacation_id)),
+        )
+        _history(conn, vacation_id, actor["id"], "Pedido alterado pelo administrador", previous_status, next_status,
+                 details={"antes": {"utilizador_id": existing["utilizador_id"], "partida": existing["data_hora_inicio"], "chegada": existing["data_hora_fim"]},
+                          "depois": {"utilizador_id": target_id, "partida": candidate["data_hora_inicio"], "chegada": candidate["data_hora_fim"]}})
+        conn.commit()
+        return validation
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+
+
 def decide_request(actor, vacation_id, action, note=""):
     decisions = {"approve": STATUS_APPROVED, "reject": STATUS_REJECTED, "return": STATUS_RETURNED}
     status = decisions.get(action)
