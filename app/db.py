@@ -101,7 +101,13 @@ def init_db():
             snr_substituto_inicio TEXT,
             snr_substituto_fim TEXT,
             telemovel_servico TEXT,
+            campo TEXT,
+            branch_pillar TEXT,
+            ramo TEXT,
+            telefone_contacto_pt TEXT,
+            morada_pt TEXT,
             responsavel_welfare INTEGER DEFAULT 0,
+            validacao_digital_leave INTEGER DEFAULT 0,
             posicao_numero TEXT,
             tipo_acesso TEXT NOT NULL,
             password_salt TEXT NOT NULL,
@@ -137,8 +143,20 @@ def init_db():
         cur.execute("ALTER TABLE utilizadores ADD COLUMN snr_substituto_fim TEXT")
     if "telemovel_servico" not in colunas_utilizadores:
         cur.execute("ALTER TABLE utilizadores ADD COLUMN telemovel_servico TEXT")
+    if "campo" not in colunas_utilizadores:
+        cur.execute("ALTER TABLE utilizadores ADD COLUMN campo TEXT")
+    if "branch_pillar" not in colunas_utilizadores:
+        cur.execute("ALTER TABLE utilizadores ADD COLUMN branch_pillar TEXT")
+    if "ramo" not in colunas_utilizadores:
+        cur.execute("ALTER TABLE utilizadores ADD COLUMN ramo TEXT")
+    if "telefone_contacto_pt" not in colunas_utilizadores:
+        cur.execute("ALTER TABLE utilizadores ADD COLUMN telefone_contacto_pt TEXT")
+    if "morada_pt" not in colunas_utilizadores:
+        cur.execute("ALTER TABLE utilizadores ADD COLUMN morada_pt TEXT")
     if "responsavel_welfare" not in colunas_utilizadores:
         cur.execute("ALTER TABLE utilizadores ADD COLUMN responsavel_welfare INTEGER DEFAULT 0")
+    if "validacao_digital_leave" not in colunas_utilizadores:
+        cur.execute("ALTER TABLE utilizadores ADD COLUMN validacao_digital_leave INTEGER DEFAULT 0")
     if "area_funcional" not in colunas_utilizadores:
         cur.execute("ALTER TABLE utilizadores ADD COLUMN area_funcional TEXT DEFAULT 'Não definido'")
     if "posicao_numero" not in colunas_utilizadores:
@@ -1325,6 +1343,14 @@ def get_nome_cos():
 
 def set_nome_cos(nome):
     set_setting("nome_cos", nome)
+
+
+def get_nome_missao():
+    return get_setting("nome_missao", "")
+
+
+def set_nome_missao(nome):
+    set_setting("nome_missao", nome)
 
 
 def get_inicio_semana():

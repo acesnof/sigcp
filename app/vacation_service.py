@@ -1280,6 +1280,44 @@ def format_date(value):
         return text_value
 
 
+def get_leave_approval(vacation):
+    """Obtém o aprovador, a data de aprovação e a opção de validação digital.
+
+    A opção de validação pertence ao SNR titular, mesmo que a aprovação
+    tenha sido registada por um administrador ou exista um substituto.
+    """
+    approval = db.db_one(
+        """
+        SELECT utilizador_id, criado_em FROM ferias_historico
+        WHERE feria_id=? AND acao IN (
+            'Aprovado', 'Submetido e aprovado automaticamente',
+            'Alteração aprovada', 'Alteração aprovada automaticamente'
+        )
+        ORDER BY criado_em DESC, id DESC LIMIT 1
+        """,
+        (vacation["id"],),
+    )
+    actor_id = approval["utilizador_id"] if approval else vacation.get("decidido_por")
+    approved_at = approval["criado_em"] if approval else vacation.get("decidido_em")
+    signer = db.db_one("SELECT * FROM utilizadores WHERE id=?", (actor_id,)) if actor_id else None
+    seniors = db.db_rows(
+        """
+        SELECT * FROM utilizadores
+        WHERE master=0 AND COALESCE(snr, 0)=1
+          AND (data_partida IS NULL OR TRIM(data_partida)=''
+               OR SUBSTR(data_partida, 1, 10)>=?)
+        """,
+        (date.today().isoformat(),),
+    )
+    validation_profile = seniors[0] if len(seniors) == 1 else None
+    if not seniors:
+        validation_profile = db.get_snr_unico_ativo_para_assinatura()
+    digital_validation = bool(
+        validation_profile and int(validation_profile.get("validacao_digital_leave") or 0)
+    )
+    return signer, approved_at, digital_validation
+
+
 def _history_map(ids):
     if not ids:
         return {}
@@ -1437,6 +1475,10 @@ def safe_member(member):
         "data_chegada": member.get("data_chegada") or "",
         "data_partida": member.get("data_partida") or "",
         "telemovel_servico": member.get("telemovel_servico") or "",
+        "campo": member.get("campo") or "",
+        "branch_pillar": member.get("branch_pillar") or "",
+        "telefone_contacto_pt": member.get("telefone_contacto_pt") or "",
+        "morada_pt": member.get("morada_pt") or "",
         "ferias_direito_override": member.get("ferias_direito_override"),
         "missao_prorrogada": bool(int(member.get("missao_prorrogada") or 0)),
         "notas_ferias": member.get("notas_ferias") or "",

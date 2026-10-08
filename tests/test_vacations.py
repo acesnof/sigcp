@@ -131,6 +131,120 @@ class VacationWorkflowTest(unittest.TestCase):
         self.assertEqual(200, response.status_code, response.get_json())
         return response.get_json()["id"]
 
+    def test_leave_export_uses_approval_signer_despite_active_substitute(self):
+        from docx import Document
+        from app.reports.leave_application_pdf import _paragraphs_in_table
+
+        _boot, headers = self.login("militar")
+        vacation_id = self.create_request(headers)
+        actor = db.db_one("SELECT * FROM utilizadores WHERE id=?", (self.snr_id,))
+        with patch.object(vacation_service, "now_db", return_value="2026-05-20 14:30"):
+            vacation_service.decide_request(actor, vacation_id, "approve")
+        db.db_execute("UPDATE utilizadores SET validacao_digital_leave=1 WHERE id=?", (self.snr_id,))
+        substitute_id = self.create_user("substituto")
+        db.db_execute(
+            "UPDATE utilizadores SET snr_substituto=1, snr_substituto_inicio=?, snr_substituto_fim=? WHERE id=?",
+            (date.today().isoformat(), date.today().isoformat(), substitute_id),
+        )
+        # A later rejected cancellation must not replace the original approval.
+        db.db_execute(
+            "UPDATE ferias SET decidido_por=?, decidido_em=? WHERE id=?",
+            (substitute_id, "2026-05-25 10:00", vacation_id),
+        )
+        db.db_execute(
+            "INSERT INTO ferias_historico (feria_id, utilizador_id, acao, estado_novo, criado_em) VALUES (?, ?, ?, ?, ?)",
+            (vacation_id, substitute_id, "Cancelamento rejeitado", "Aprovado", "2026-05-25 10:00"),
+        )
+
+        def inspect_document(source, destination):
+            document = Document(source)
+            paragraphs = list(document.paragraphs)
+            for table in document.tables:
+                paragraphs.extend(_paragraphs_in_table(table))
+            signature = next(p for p in paragraphs if p.text.startswith("12. COORDINATION 2:"))
+            self.assertIn("SNR_FERIAS, Nome on 20/05/2026", signature.text)
+            self.assertTrue(signature._p.xpath(".//w:drawing"))
+            self.assertNotIn("SUBSTITUTO", signature.text)
+            destination.write_bytes(b"%PDF-test")
+
+        with patch("app.reports.leave_application_pdf._convert_to_pdf", side_effect=inspect_document) as convert:
+            response = self.client.get(f"/api/vacations/{vacation_id}/leave-application.pdf")
+            self.assertEqual(200, response.status_code)
+            self.assertEqual(b"%PDF-test", response.data)
+            convert.assert_called_once()
+            response.close()
+
+    def test_leave_export_uses_snr_preference_for_admin_and_legacy_approvals(self):
+        from docx import Document
+        from app.reports.leave_application_pdf import _paragraphs_in_table
+
+        _boot, headers = self.login("militar")
+        vacation_id = self.create_request(headers)
+        admin_id = self.create_user("admin_aprovador", acesso="Administrador")
+        actor = db.db_one("SELECT * FROM utilizadores WHERE id=?", (admin_id,))
+        with patch.object(vacation_service, "now_db", return_value="2026-05-20 14:30"):
+            vacation_service.decide_request(actor, vacation_id, "approve")
+
+        for legacy in (False, True):
+            if legacy:
+                db.db_execute("DELETE FROM ferias_historico WHERE feria_id=?", (vacation_id,))
+                db.db_execute(
+                    "UPDATE ferias SET decidido_por=NULL, decidido_em=NULL WHERE id=?", (vacation_id,)
+                )
+            for enabled in (1, 0):
+                with self.subTest(legacy=legacy, enabled=enabled):
+                    db.db_execute(
+                        "UPDATE utilizadores SET validacao_digital_leave=? WHERE id=?", (enabled, self.snr_id)
+                    )
+
+                    def inspect_document(source, destination):
+                        document = Document(source)
+                        paragraphs = list(document.paragraphs)
+                        for table in document.tables:
+                            paragraphs.extend(_paragraphs_in_table(table))
+                        signature = next(p for p in paragraphs if p.text.startswith("12. COORDINATION 2:"))
+                        self.assertEqual(bool(enabled and not legacy), bool(signature._p.xpath(".//w:drawing")))
+                        self.assertNotIn("SNR_FERIAS", signature.text)
+                        if enabled and not legacy:
+                            self.assertIn("ADMIN_APROVADOR, Nome", signature.text)
+                            self.assertIn("20/05/2026", signature.text)
+                        else:
+                            self.assertNotIn("Digitally validated", signature.text)
+                        destination.write_bytes(b"%PDF-test")
+
+                    with patch("app.reports.leave_application_pdf._convert_to_pdf", side_effect=inspect_document):
+                        response = self.client.get(f"/api/vacations/{vacation_id}/leave-application.pdf")
+                        self.assertEqual(200, response.status_code)
+                        self.assertEqual(b"%PDF-test", response.data)
+                        response.close()
+
+    def test_leave_approval_keeps_substitute_identity_after_substitution_ends(self):
+        _boot, headers = self.login("militar")
+        vacation_id = self.create_request(headers)
+        substitute_id = self.create_user("substituto_aprovador")
+        db.db_execute(
+            "UPDATE utilizadores SET snr_substituto=1, snr_substituto_inicio=?, snr_substituto_fim=? WHERE id=?",
+            (date.today().isoformat(), date.today().isoformat(), substitute_id),
+        )
+        db.db_execute("UPDATE utilizadores SET validacao_digital_leave=1 WHERE id=?", (self.snr_id,))
+        actor = db.db_one("SELECT * FROM utilizadores WHERE id=?", (substitute_id,))
+        with patch.object(vacation_service, "now_db", return_value="2026-05-20 14:30"):
+            vacation_service.decide_request(actor, vacation_id, "approve")
+        db.db_execute("UPDATE utilizadores SET snr_substituto=0 WHERE id=?", (substitute_id,))
+
+        def inspect_export(destination, person, vacation, approver, *args, **kwargs):
+            self.assertEqual(substitute_id, approver["id"])
+            self.assertEqual("2026-05-20 14:30", vacation["aprovacao_em"])
+            self.assertTrue(kwargs["digital_validation"])
+            Path(destination).write_bytes(b"%PDF-test")
+
+        with patch("app.web_app.generate_leave_application_pdf", side_effect=inspect_export) as export:
+            response = self.client.get(f"/api/vacations/{vacation_id}/leave-application.pdf")
+            self.assertEqual(200, response.status_code)
+            self.assertEqual(b"%PDF-test", response.data)
+            export.assert_called_once()
+            response.close()
+
     def test_only_owner_can_correct_pending_request(self):
         self.create_user("gestor_ferias", acesso="Pessoal/Gestão Férias")
         _boot, person_headers = self.login("militar")

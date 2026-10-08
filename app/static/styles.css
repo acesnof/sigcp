@@ -214,9 +214,17 @@ svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width:
 .input-shell input { height: 100%; border: 0; box-shadow: none !important; padding-left: 10px; }
 .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 15px 18px; }
 .form-grid--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.form-grid--4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .field--full { grid-column: 1 / -1; }
 .people-form-grid { align-items: start; gap: 18px; }
 .people-form-grid > .field { margin-bottom: 0; }
+.people-form-grid__pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+.people-form-grid__contact { grid-template-columns: minmax(170px, 1fr) minmax(0, 3fr); }
+.people-form-grid__contact--with-service { grid-template-columns: minmax(170px, .9fr) minmax(0, 2.3fr) minmax(180px, 1fr); }
+.phone-input { display: flex; gap: 8px; }
+.phone-input__prefix { width: 58px; flex: 0 0 58px; color: var(--muted); background: #f5f8f8; }
+.phone-input > input:last-child { min-width: 0; flex: 1; }
+.profile-digital-validation { display: flex; align-items: center; gap: 8px; margin-top: 16px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; background: #f7fbfb; font-size: 13px; font-weight: 650; }
 .people-password-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
 .people-password-row > .field { grid-template-rows: auto 43px auto; align-content: start; margin-bottom: 0; }
 .people-form-checkline { min-height: 43px; display: flex; align-items: center; gap: 18px; padding-inline: 4px; }
@@ -1037,7 +1045,8 @@ svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width:
     .stat-card { min-height: 90px; padding: 12px; gap: 10px; }
     .stat-icon { width: 36px; height: 36px; }
     .stat-card strong { font-size: 19px; }
-    .form-grid, .form-grid--3 { grid-template-columns: 1fr; }
+    .form-grid, .form-grid--3, .form-grid--4 { grid-template-columns: 1fr; }
+    .people-form-grid__pair { grid-template-columns: 1fr; }
     .field--full { grid-column: auto; }
     .modal-backdrop { padding: 10px; align-items: end; }
     .modal { max-height: calc(100vh - 20px); border-radius: 17px 17px 8px 8px; }

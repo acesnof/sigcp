@@ -66,6 +66,7 @@ from app.db import (
     get_horario_dfac,
     get_inicio_semana,
     get_lingua,
+    get_nome_missao,
     get_nome_cos,
     get_responsavel_welfare_mais_antigo_ativo,
     get_setting,
@@ -84,6 +85,7 @@ from app.db import (
     set_inicio_semana,
     set_setting,
     set_lingua,
+    set_nome_missao,
     set_mes_trancado,
     set_nome_cos,
     set_utilizador_acessos,
@@ -96,6 +98,7 @@ from app.web_i18n import ENGLISH, language, translate, translate_messages
 from app.person_order import person_order_key
 from app.print_utils import gerar_pdf_mes
 from app.reports.individual_pdf import gerar_pdf_welfare_individual
+from app.reports.leave_application_pdf import generate_leave_application_pdf
 from app.reports.reimbursement_xlsx import gerar_reembolso_mensal
 from app.reports.request_docx import gerar_request_welfare_meals
 from app.reports.service_note_docx import gerar_service_note
@@ -338,7 +341,13 @@ def _safe_user(user):
         "snr_substituto_fim": user.get("snr_substituto_fim") or "",
         "snr_substituto_ativo": _is_snr_substituto_ativo(user),
         "telemovel_servico": user.get("telemovel_servico") or "",
+        "campo": user.get("campo") or "",
+        "branch_pillar": user.get("branch_pillar") or "",
+        "ramo": user.get("ramo") or "Exército",
+        "telefone_contacto_pt": user.get("telefone_contacto_pt") or "",
+        "morada_pt": user.get("morada_pt") or "",
         "responsavel_welfare": bool(int(user.get("responsavel_welfare") or 0)),
+        "validacao_digital_leave": bool(int(user.get("validacao_digital_leave") or 0)),
         "area_funcional": user.get("area_funcional") or "Não definido",
         "posicao_numero": user.get("posicao_numero") or "",
         "ferias_direito_override": user.get("ferias_direito_override"),
@@ -727,6 +736,7 @@ def create_web_app():
         return render_template(
             "index.html", app_name=APP_NAME, app_full_name=APP_FULL_NAME,
             app_version=app_config.APP_VERSION,
+            mission_name=get_nome_missao() or "EUTM RCA",
         )
 
     @app.errorhandler(500)
@@ -749,6 +759,7 @@ def create_web_app():
         return render_template(
             "index.html", app_name=APP_NAME, app_full_name=APP_FULL_NAME,
             app_version=app_config.APP_VERSION,
+            mission_name=get_nome_missao() or "EUTM RCA",
         )
 
     @app.get("/api/instance")
@@ -906,6 +917,7 @@ def create_web_app():
                 "tipos_welfare": list(TIPOS_WELFARE),
                 "meses": months(),
                 "dias_semana": weekdays_short(),
+                "nome_missao": get_nome_missao() or "EUTM RCA",
                 "today": date.today().isoformat(),
                 "version": f"{app_config.APP_VERSION} Web",
             },
@@ -923,6 +935,21 @@ def create_web_app():
             raise ApiError("As passwords não coincidem.")
         atualizar_password_utilizador(user["id"], password)
         return _json_ok(message="Password alterada com sucesso.")
+
+    @app.put("/api/profile/leave-digital-validation")
+    @_login_required
+    def api_profile_leave_digital_validation(user):
+        if not _is_snr(user):
+            raise ApiError("A validação digital está reservada ao SNR.", 403, "permissao")
+        ativo = 1 if _body().get("ativo") else 0
+        db_execute(
+            "UPDATE utilizadores SET validacao_digital_leave=? WHERE id=? AND master=0",
+            (ativo, user["id"]),
+        )
+        return _json_ok(
+            ativo=bool(ativo),
+            message="Validação digital atualizada.",
+        )
 
     @app.get("/api/calendar")
     @_login_required
@@ -1209,7 +1236,9 @@ def create_web_app():
         inicio, fim = _periodo_caixa()
         return _download_gerado(
             f"Balanco_Caixa_{inicio}_{fim}.pdf", ".pdf", "application/pdf",
-            lambda caminho: cash_service.generate_pdf(inicio, fim, caminho),
+            lambda caminho: cash_service.generate_pdf(
+                inicio, fim, caminho, get_nome_missao()
+            ),
         )
 
     def _team_payload():
@@ -1445,7 +1474,9 @@ def create_web_app():
             nome,
             ".pdf",
             "application/pdf",
-            lambda caminho: gerar_pdf_mes(ano, mes, output_path=caminho),
+            lambda caminho: gerar_pdf_mes(
+                ano, mes, output_path=caminho, mission_name=get_nome_missao()
+            ),
         )
 
     @app.get("/api/dish-roster")
@@ -1521,7 +1552,9 @@ def create_web_app():
         ano, mes = _periodo()
         return _download_gerado(
             f"Escala_Loica_{ano}_{mes:02d}.pdf", ".pdf", "application/pdf",
-            lambda caminho: dish_roster.generate_pdf(ano, mes, caminho),
+            lambda caminho: dish_roster.generate_pdf(
+                ano, mes, caminho, get_nome_missao()
+            ),
         )
 
     def listar_utilizadores(mostrar_todos):
@@ -1593,6 +1626,15 @@ def create_web_app():
             _valores_substituicao_snr(current, existente, dados)
         )
         telemovel = str(dados.get("telemovel_servico") or "").strip()
+        campo = str(dados.get("campo") or "").strip()[:120]
+        branch_pillar = str(dados.get("branch_pillar") or "").strip()[:120]
+        ramo = str(dados.get("ramo") or "Exército").strip()
+        if ramo not in ("Exército", "Força Aérea", "Marinha"):
+            raise ApiError("Ramo inválido.")
+        telefone_contacto_pt = "".join(char for char in str(dados.get("telefone_contacto_pt") or "") if char.isdigit())
+        if telefone_contacto_pt and len(telefone_contacto_pt) != 9:
+            raise ApiError("O número de contacto PT deve ter 9 algarismos.")
+        morada_pt = str(dados.get("morada_pt") or "").strip()[:300]
         area_funcional = str(dados.get("area_funcional") or "Não definido").strip()[:120]
         area_funcional = area_funcional or "Não definido"
         posicao_numero = str(dados.get("posicao_numero") or "").strip()[:40]
@@ -1643,6 +1685,11 @@ def create_web_app():
             snr_substituto_inicio,
             snr_substituto_fim,
             telemovel,
+            campo,
+            branch_pillar,
+            ramo,
+            telefone_contacto_pt,
+            morada_pt,
             responsavel,
             area_funcional,
             posicao_numero,
@@ -1665,7 +1712,7 @@ def create_web_app():
                         UPDATE utilizadores SET
                             nim=?, posto=?, posto_portugal=?, antiguidade=?, snr=?,
                             snr_substituto=?, snr_substituto_inicio=?, snr_substituto_fim=?,
-                            telemovel_servico=?, responsavel_welfare=?,
+                            telemovel_servico=?, campo=?, branch_pillar=?, ramo=?, telefone_contacto_pt=?, morada_pt=?, responsavel_welfare=?,
                             area_funcional=?, posicao_numero=?, ferias_direito_override=?,
                             missao_prorrogada=?, notas_ferias=?,
                             nome=?, sobrenome=?, data_nascimento=?, data_chegada=?, data_partida=?,
@@ -1680,7 +1727,7 @@ def create_web_app():
                         UPDATE utilizadores SET
                             nim=?, posto=?, posto_portugal=?, antiguidade=?, snr=?,
                             snr_substituto=?, snr_substituto_inicio=?, snr_substituto_fim=?,
-                            telemovel_servico=?, responsavel_welfare=?,
+                            telemovel_servico=?, campo=?, branch_pillar=?, ramo=?, telefone_contacto_pt=?, morada_pt=?, responsavel_welfare=?,
                             area_funcional=?, posicao_numero=?, ferias_direito_override=?,
                             missao_prorrogada=?, notas_ferias=?,
                             nome=?, sobrenome=?, data_nascimento=?, data_chegada=?, data_partida=?,
@@ -1697,13 +1744,13 @@ def create_web_app():
                     INSERT INTO utilizadores (
                         nim, posto, posto_portugal, antiguidade, snr,
                         snr_substituto, snr_substituto_inicio, snr_substituto_fim,
-                        telemovel_servico,
+                        telemovel_servico, campo, branch_pillar, ramo, telefone_contacto_pt, morada_pt,
                         responsavel_welfare, area_funcional,
                         posicao_numero, ferias_direito_override, missao_prorrogada, notas_ferias,
                         nome, sobrenome, data_nascimento, data_chegada,
                         data_partida, tipo_acesso, password_salt,
                         password_hash, master
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
                     """,
                     valores + (salt, pwd_hash),
                 )
@@ -1784,6 +1831,7 @@ def create_web_app():
                 "valor_welfare": get_valor_welfare(),
                 "valor_caixa": get_valor_caixa(),
                 "nome_cos": get_nome_cos(),
+                "nome_missao": get_nome_missao(),
                 "inicio_semana": get_inicio_semana(),
                 "lingua": get_lingua(),
                 "horario_dfac": get_horario_dfac(),
@@ -1835,6 +1883,8 @@ def create_web_app():
             set_valor_caixa(valor)
         if "nome_cos" in dados:
             set_nome_cos(str(dados["nome_cos"] or "").strip())
+        if "nome_missao" in dados:
+            set_nome_missao(str(dados["nome_missao"] or "").strip()[:120])
         if "inicio_semana" in dados:
             set_inicio_semana(_data_iso(dados["inicio_semana"]))
         if "lingua" in dados:
@@ -1988,6 +2038,37 @@ def create_web_app():
     def vacation_detail(vacation_id):
         rows = vacations.list_requests(vacation_id=vacation_id)
         return next((item for item in rows if item["id"] == int(vacation_id)), None)
+
+    @app.get("/api/vacations/<int:feria_id>/leave-application.pdf")
+    @_login_required
+    def api_leave_application_pdf(user, feria_id):
+        vacation = vacation_detail(feria_id)
+        if not vacation:
+            raise ApiError("Pedido não encontrado.", 404)
+        if int(vacation["utilizador_id"]) != int(user["id"]):
+            raise ApiError("Só podes gerar o teu próprio documento.", 403, "permissao")
+        if vacation.get("estado") != "Aprovado":
+            raise ApiError("O documento só fica disponível após a aprovação.", 409)
+        person = db_one("SELECT * FROM utilizadores WHERE id=? AND master=0", (user["id"],))
+        if not person:
+            raise ApiError("Pessoa não encontrada.", 404)
+        approver, approved_at, digital_validation = vacations.get_leave_approval(vacation)
+        vacation["aprovacao_em"] = approved_at
+        poc_nominated = str(request.args.get("poc_nominated") or "").strip()[:120]
+        deviation_reason = str(request.args.get("deviation_reason") or "").strip()[:500]
+        try:
+            return _download_gerado(
+                f"Application_Form_For_Leave_{feria_id}.pdf",
+                ".pdf",
+                "application/pdf",
+                lambda caminho: generate_leave_application_pdf(
+                    caminho, person, vacation, approver, poc_nominated, deviation_reason,
+                    get_nome_missao(),
+                    digital_validation=digital_validation,
+                ),
+            )
+        except RuntimeError as exc:
+            raise ApiError(str(exc), 500)
 
     @app.get("/api/vacations/me")
     @_login_required
@@ -2284,12 +2365,21 @@ def create_web_app():
                 raise ApiError("O Total de dias Férias (manual) deve estar entre 0 e 365 dias.")
         area = str(dados.get("area_funcional") or "Não definido").strip()[:120]
         posicao_numero = str(dados.get("posicao_numero") or "").strip()[:40]
+        campo = str(dados.get("campo") or "").strip()[:120]
+        branch_pillar = str(dados.get("branch_pillar") or "").strip()[:120]
+        ramo = str(dados.get("ramo") or person.get("ramo") or "Exército").strip()
+        if ramo not in ("Exército", "Força Aérea", "Marinha"):
+            raise ApiError("Ramo inválido.")
+        telefone_contacto_pt = "".join(char for char in str(dados.get("telefone_contacto_pt") or "") if char.isdigit())
+        if telefone_contacto_pt and len(telefone_contacto_pt) != 9:
+            raise ApiError("O número de contacto PT deve ter 9 algarismos.")
+        morada_pt = str(dados.get("morada_pt") or "").strip()[:300]
         snr_substituto, snr_substituto_inicio, snr_substituto_fim = (
             _valores_substituicao_snr(current, person, dados)
         )
         db_execute(
             """
-            UPDATE utilizadores SET area_funcional=?, posicao_numero=?, data_chegada=?, data_partida=?,
+            UPDATE utilizadores SET area_funcional=?, posicao_numero=?, campo=?, branch_pillar=?, ramo=?, telefone_contacto_pt=?, morada_pt=?, data_chegada=?, data_partida=?,
                 ferias_direito_override=?, missao_prorrogada=?, notas_ferias=?,
                 snr_substituto=?, snr_substituto_inicio=?, snr_substituto_fim=?
             WHERE id=? AND master=0
@@ -2297,6 +2387,11 @@ def create_web_app():
             (
                 area or "Não definido",
                 posicao_numero,
+                campo,
+                branch_pillar,
+                ramo,
+                telefone_contacto_pt,
+                morada_pt,
                 mission_start,
                 mission_end,
                 direito,

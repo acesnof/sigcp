@@ -317,7 +317,7 @@ def payload(year, month, current_user_id=None, manager=False, administrator=Fals
     }
 
 
-def generate_pdf(year, month, output_path):
+def generate_pdf(year, month, output_path, mission_name=""):
     data = payload(year, month)
     # A consulta no ecrã mantém quatro meses; a impressão usa apenas três para
     # dar mais altura às assinaturas e às observações em uma única folha A4.
@@ -364,7 +364,10 @@ def generate_pdf(year, month, output_path):
         [[
             "",
             [
-                Paragraph("CONTINGENTE PORTUGUÊS · EUTM RCA", eyebrow),
+                Paragraph(
+                    f"CONTINGENTE PORTUGUÊS · {escape(str(mission_name or 'EUTM RCA').upper())}",
+                    eyebrow,
+                ),
                 Paragraph("ESCALA LOIÇA · FIM DE SEMANA", heading),
             ],
             Paragraph(period, summary),

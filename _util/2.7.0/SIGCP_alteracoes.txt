@@ -1,0 +1,2 @@
+- Gestão de Pessoal: novos campos de contacto, morada e organização do formulário.
+- Férias: exportação do Application Form For Leave e validação digital opcional do SNR.

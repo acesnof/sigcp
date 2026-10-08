@@ -59,6 +59,10 @@
         </div>`;
     }
 
+    function portugalPhoneField(value = "", disabled = false) {
+        return `<label class="field"><span>Contacto PT</span><span class="phone-input"><input class="phone-input__prefix" value="+351" aria-label="Indicativo de Portugal" disabled><input name="telefone_contacto_pt" inputmode="numeric" pattern="[0-9]{9}" maxlength="9" placeholder="912 345 678" value="${attr(value)}" aria-label="Número de contacto PT" ${disabled ? "disabled" : ""}></span></label>`;
+    }
+
     function initDateTimePickers(root = document) {
         $$('[data-datetime-picker]', root).forEach((picker) => {
             if (picker.dataset.datetimeReady === "true") return;
@@ -1486,27 +1490,26 @@
             body: `<form id="user-form">
                 ${master ? `<div class="info-banner" style="margin-bottom:16px">${icon("lock")}<span>${t("O utilizador mestre está protegido e não pode ser alterado.")}</span></div>` : ""}
                 <div class="form-grid form-grid--3 people-form-grid">
-                    <label class="field"><span class="required">${t("NIM / Utilizador")}</span><input name="nim" value="${attr(user?.nim || "")}" ${lockedProfile ? "disabled" : ""} required></label>
-                    <label class="field"><span>${t("Posto da missão")}</span><select name="posto" ${lockedProfile ? "disabled" : ""}>${state.boot.config.postos.map((posto) => `<option ${posto === (user?.posto_missao || user?.posto) ? "selected" : ""}>${esc(posto)}</option>`).join("")}</select></label>
-                    <label class="field"><span>${t("Posto português")}</span><select name="posto_portugal" ${lockedProfile ? "disabled" : ""}><option value="">${t("Sem correspondência")}</option>${state.boot.config.postos_portugal.map((posto) => `<option ${posto === user?.posto_portugal ? "selected" : ""}>${esc(posto)}</option>`).join("")}</select></label>
-                    <label class="field"><span>${t("Antiguidade")}</span><input name="antiguidade" type="date" value="${attr(String(user?.antiguidade || "").slice(0,10))}" ${lockedProfile ? "disabled" : ""}></label>
                     <label class="field"><span>${t("Nome")}</span><input name="nome" value="${attr(user?.nome || "")}" ${lockedProfile ? "disabled" : ""}></label>
                     <label class="field"><span>${t("Sobrenome")}</span><input name="sobrenome" value="${attr(user?.sobrenome || "")}" ${lockedProfile ? "disabled" : ""}></label>
                     <label class="field"><span>${t("Data Nascimento")}</span><input name="data_nascimento" type="date" value="${attr(String(user?.data_nascimento || "").slice(0,10))}" ${lockedProfile ? "disabled" : ""}></label>
-                    <label class="field"><span>${t("Telemóvel Serviço")}</span><input name="telemovel_servico" value="${attr(user?.telemovel_servico || "")}" ${lockedProfile ? "disabled" : ""}></label>
-                    <label class="field"><span>${t("Área funcional")}</span><input name="area_funcional" value="${attr(user?.area_funcional === "Não definido" ? "" : user?.area_funcional || "")}" placeholder="${attr(t("Não definido"))}" ${lockedProfile ? "disabled" : ""}></label>
-                    <label class="field"><span>${t("Posição N.º")}</span><input name="posicao_numero" maxlength="40" value="${attr(user?.posicao_numero || "")}" ${lockedProfile ? "disabled" : ""}></label>
-                    ${admin ? functionsField : manualVacationField}
-                    ${dateTimeField("data_chegada", t("Data/hora de chegada"), user?.data_chegada, {disabled: lockedProfile})}
-                    ${dateTimeField("data_partida", t("Data/hora de partida"), user?.data_partida, {disabled: lockedProfile})}
-                    ${admin ? manualVacationField : missionField}
-                    ${admin ? missionField : ""}
+                    <label class="field"><span class="required">${t("NIM / Utilizador")}</span><input name="nim" value="${attr(user?.nim || "")}" ${lockedProfile ? "disabled" : ""} required></label>
+                    <label class="field"><span>Ramo</span><select name="ramo" ${lockedProfile ? "disabled" : ""}>${["Exército", "Força Aérea", "Marinha"].map((ramo) => `<option value="${ramo}" ${ramo === (user?.ramo || "Exército") ? "selected" : ""}>${ramo}</option>`).join("")}</select></label>
+                    <div></div>
+                    <label class="field"><span>${t("Posto da missão")}</span><select name="posto" ${lockedProfile ? "disabled" : ""}>${state.boot.config.postos.map((posto) => `<option ${posto === (user?.posto_missao || user?.posto) ? "selected" : ""}>${esc(posto)}</option>`).join("")}</select></label>
+                    <label class="field"><span>${t("Posto português")}</span><select name="posto_portugal" ${lockedProfile ? "disabled" : ""}><option value="">${t("Sem correspondência")}</option>${state.boot.config.postos_portugal.map((posto) => `<option ${posto === user?.posto_portugal ? "selected" : ""}>${esc(posto)}</option>`).join("")}</select></label>
+                    <label class="field"><span>${t("Antiguidade")}</span><input name="antiguidade" type="date" value="${attr(String(user?.antiguidade || "").slice(0,10))}" ${lockedProfile ? "disabled" : ""}></label>
+                    <div class="people-form-grid__pair field--full">${dateTimeField("data_chegada", t("Data/hora de chegada"), user?.data_chegada, {disabled: lockedProfile})}${dateTimeField("data_partida", t("Data/hora de partida"), user?.data_partida, {disabled: lockedProfile})}</div>
+                    <div class="people-form-grid__pair people-form-grid__contact--with-service field--full">${portugalPhoneField(user?.telefone_contacto_pt || "", lockedProfile)}<label class="field"><span>${t("Morada PT")}</span><input name="morada_pt" maxlength="300" value="${attr(user?.morada_pt || "")}" ${lockedProfile ? "disabled" : ""}></label><label class="field"><span>${t("Telemóvel Serviço")}</span><input name="telemovel_servico" value="${attr(user?.telemovel_servico || "")}" ${lockedProfile ? "disabled" : ""}></label></div>
+                    ${manualVacationField}
+                    ${missionField}
+                    <label class="field field--full"><span>${t("Notas de férias")}</span><textarea name="notas_ferias" ${lockedProfile ? "disabled" : ""}>${esc(user?.notas_ferias || "")}</textarea></label>
                     <div class="people-password-row field--full">
                         <label class="field"><span>${editing ? t("Nova password") : "Password"}</span><input name="password" type="password" autocomplete="new-password" ${lockedProfile ? "disabled" : ""}><small>${editing ? t("Deixa em branco para manter a atual.") : t("Obrigatória para novo utilizador.")}</small></label>
                         <label class="field"><span>${t("Confirmar password")}</span><input name="confirmar_password" type="password" autocomplete="new-password" ${lockedProfile ? "disabled" : ""}></label>
                     </div>
-                    <label class="field field--full"><span>${t("Notas de férias")}</span><textarea name="notas_ferias" ${lockedProfile ? "disabled" : ""}>${esc(user?.notas_ferias || "")}</textarea></label>
                     ${canAssignSubstitute ? snrSubstitutionFields(user) : ""}
+                    ${admin ? functionsField : ""}
                 </div>
                 <div style="margin-top:5px">
                     <p style="font-size:12px;font-weight:750">${t("Tipos de acesso")}</p>
@@ -1549,12 +1552,14 @@
                         data_nascimento: form.get("data_nascimento"),
                         data_chegada: form.get("data_chegada"), data_partida: form.get("data_partida"),
                         telemovel_servico: form.get("telemovel_servico"),
+                        branch_pillar: user?.branch_pillar || "", ramo: form.get("ramo"), telefone_contacto_pt: form.get("telefone_contacto_pt"),
+                        morada_pt: form.get("morada_pt"),
                         ...(admin ? {
                             snr: form.get("snr") === "on",
                             responsavel_welfare: form.get("responsavel_welfare") === "on",
                         } : {}),
-                        area_funcional: form.get("area_funcional"),
-                        posicao_numero: form.get("posicao_numero"),
+                        area_funcional: user?.area_funcional || "",
+                        posicao_numero: user?.posicao_numero || "",
                         ferias_direito_override: form.get("ferias_direito_override"),
                         missao_prorrogada: form.get("missao_prorrogada") === "on",
                         notas_ferias: form.get("notas_ferias"),
@@ -1637,6 +1642,7 @@
             actions.push(`<button class="btn btn--small btn--ghost-danger" data-action="vacation-withdraw" data-id="${item.id}">${t("Retirar")}</button>`);
         }
         if (own && item.estado === "Aprovado") {
+            actions.push(`<button class="btn btn--small btn--success" data-action="vacation-leave-form" data-id="${item.id}">${icon("download")} Exportar Application Form For Leave</button>`);
             actions.push(`<button class="btn btn--small btn--secondary" data-action="vacation-change" data-id="${item.id}">${icon("edit")} ${t("Pedir alteração")}</button>`);
             actions.push(`<button class="btn btn--small btn--ghost-danger" data-action="vacation-cancel" data-id="${item.id}">${t("Pedir cancelamento")}</button>`);
         }
@@ -1835,6 +1841,10 @@
             <div id="vacation-management-root"></div>
         </section>`;
         await loadVacationManagement();
+    }
+
+    function missionHeading() {
+        return `${t("CONTINGENTE PORTUGUÊS")} · ${esc(String(state.boot?.config?.nome_missao || "EUTM RCA").toUpperCase())}`;
     }
 
     async function renderVacationPlanning() {
@@ -2046,7 +2056,7 @@
         const report = document.createElement("section");
         report.id = "vacation-planning-print-report";
         report.className = "vacation-calendar-print-report";
-        report.innerHTML = `<header class="vacation-calendar-print-header"><div><p>${t("CONTINGENTE PORTUGUÊS · EUTM RCA")}</p><h1>${t("Planeamento Geral · Lista de férias")}</h1></div><div><strong>${state.vacationPlanning?.pedidos?.length || 0} ${t("períodos")}</strong><small>${t("Gerado em")} ${esc(new Intl.DateTimeFormat(locale(), {dateStyle: "short", timeStyle: "short"}).format(new Date()))}</small></div></header><div class="vacation-planning-print-table">${table.outerHTML}</div>`;
+        report.innerHTML = `<header class="vacation-calendar-print-header"><div><p>${missionHeading()}</p><h1>${t("Planeamento Geral · Lista de férias")}</h1></div><div><strong>${state.vacationPlanning?.pedidos?.length || 0} ${t("períodos")}</strong><small>${t("Gerado em")} ${esc(new Intl.DateTimeFormat(locale(), {dateStyle: "short", timeStyle: "short"}).format(new Date()))}</small></div></header><div class="vacation-planning-print-table">${table.outerHTML}</div>`;
         const originalTitle = document.title;
         const cleanup = () => { document.body.classList.remove("vacation-planning-list-printing"); report.remove(); document.title = originalTitle; };
         document.body.append(report);
@@ -2071,7 +2081,7 @@
         report.id = "vacation-calendar-print-report";
         report.className = "vacation-calendar-print-report";
         report.innerHTML = `<header class="vacation-calendar-print-header">
-            <div><p>${t("CONTINGENTE PORTUGUÊS · EUTM RCA")}</p><h1>${t("Calendário de Férias ·")} ${esc(monthTitle)}</h1></div>
+            <div><p>${missionHeading()}</p><h1>${t("Calendário de Férias ·")} ${esc(monthTitle)}</h1></div>
             <div><strong>${data.pessoas.length} ${t("militares")}</strong><small>${t("Gerado em")} ${esc(new Intl.DateTimeFormat(locale(), {dateStyle: "short", timeStyle: "short"}).format(new Date()))}</small></div>
         </header>
         <div class="vacation-calendar-print-meta">
@@ -2185,7 +2195,7 @@
         report.className = "vacation-print-report";
         const reportTitle = t(data.titulo_impressao || "Lista de licenças");
         report.innerHTML = `<header class="vacation-print-report__header">
-            <div><p>${t("CONTINGENTE PORTUGUÊS · EUTM RCA")}</p><h1>${esc(reportTitle)} · ${esc(data.ano)}</h1></div>
+            <div><p>${missionHeading()}</p><h1>${esc(reportTitle)} · ${esc(data.ano)}</h1></div>
             <div><strong>${people.length} ${t("militares")}</strong><small>${t("Gerado em")} ${esc(new Intl.DateTimeFormat(locale(), {dateStyle: "short", timeStyle: "short"}).format(new Date()))}</small></div>
         </header>
         <p class="vacation-print-report__note">${t("Ordenação por posto e, dentro do mesmo posto, por antiguidade.")}</p>
@@ -2204,6 +2214,35 @@
         document.title = `SIGCP_${reportTitle.replaceAll(" ", "_")}_${data.ano}`;
         window.addEventListener("afterprint", cleanup, {once: true});
         window.print();
+    }
+
+    function openLeaveApplicationModal(vacationId) {
+        openModal({
+            title: "Application Form For Leave",
+            subtitle: "Indica os dados adicionais para o documento.",
+            size: "wide",
+            body: `<form id="leave-application-form" class="form-grid">
+                <label class="field"><span>POC NOMINATED BY CHIEF DURING ABSENCE:</span><input name="poc_nominated" maxlength="120"></label>
+                <label class="field"><span>REASON FOR DEVIATION FROM LEAVE PLAN (If any):</span><input name="deviation_reason" maxlength="500"></label>
+            </form>`,
+            footer: `<button class="btn btn--secondary" data-modal-close>${t("Fechar")}</button><button class="btn btn--primary" type="submit" form="leave-application-form">${icon("download")} Exportar</button>`,
+            onOpen(modal) {
+                $("#leave-application-form", modal).addEventListener("submit", async (event) => {
+                    event.preventDefault();
+                    const form = new FormData(event.currentTarget);
+                    const query = new URLSearchParams({
+                        poc_nominated: form.get("poc_nominated") || "",
+                        deviation_reason: form.get("deviation_reason") || "",
+                    });
+                    closeModal();
+                    await download(
+                        `/api/vacations/${vacationId}/leave-application.pdf?${query.toString()}`,
+                        {},
+                        `Application_Form_For_Leave_${vacationId}.pdf`,
+                    );
+                });
+            },
+        });
     }
 
     function openVacationModal(period = null, presetUserId = null, mode = "request") {
@@ -2334,12 +2373,14 @@
         if (!person) return;
         const canAssignSubstitute = Boolean(state.boot.permissions.snr_substituicao && !person.snr);
         openModal({
-            title: t("Dados de férias"), subtitle: person.identificacao, size: "wide",
-            body: `<form id="vacation-person-form" class="form-grid">
+            title: t("Dados de férias"), subtitle: person.identificacao, size: "people",
+            body: `<form id="vacation-person-form" class="form-grid form-grid--3 people-form-grid">
                 <label class="field"><span>${t("Área funcional")}</span><input name="area_funcional" maxlength="120" value="${attr(person.area_funcional === "Não definido" ? "" : person.area_funcional || "")}" placeholder="${attr(t("Não definido"))}"></label>
                 <label class="field"><span>${t("Posição N.º")}</span><input name="posicao_numero" maxlength="40" value="${attr(person.posicao_numero || "")}"></label>
-                ${dateTimeField("data_chegada", t("Início da missão"), person.data_chegada)}
-                ${dateTimeField("data_partida", t("Fim da missão"), person.data_partida)}
+                <label class="field"><span>Branch / Pillar</span><input name="branch_pillar" maxlength="120" value="${attr(person.branch_pillar || "")}"></label>
+                <label class="field"><span>Ramo</span><select name="ramo">${["Exército", "Força Aérea", "Marinha"].map((ramo) => `<option value="${ramo}" ${ramo === (person.ramo || "Exército") ? "selected" : ""}>${ramo}</option>`).join("")}</select></label>
+                <div class="people-form-grid__pair people-form-grid__contact field--full">${portugalPhoneField(person.telefone_contacto_pt || "")}<label class="field"><span>${t("Morada PT")}</span><input name="morada_pt" maxlength="300" value="${attr(person.morada_pt || "")}"></label></div>
+                <div class="people-form-grid__pair field--full">${dateTimeField("data_chegada", t("Início da missão"), person.data_chegada)}${dateTimeField("data_partida", t("Fim da missão"), person.data_partida)}</div>
                 <label class="field"><span>${t("Total de dias Férias (manual)")}</span><input type="number" min="0" max="365" step="0.5" name="ferias_direito_override" value="${attr(person.ferias_direito_override ?? "")}"><small>${t("Vazio mantém o cálculo automático 30/360.")}</small></label>
                 <div class="field"><span>${t("Missão")}</span><label class="checkbox vacation-checkbox-line"><input type="checkbox" name="missao_prorrogada" ${person.missao_prorrogada ? "checked" : ""}> ${t("Missão prorrogada")}</label></div>
                 <label class="field field--full"><span>${t("Notas")}</span><textarea name="notas_ferias" maxlength="1000">${esc(person.notas_ferias || "")}</textarea></label>
@@ -2478,6 +2519,7 @@
                     <section class="card settings-card"><div class="card-body">
                         <h3>${icon("user")} ${t("Assinaturas e aplicação")}</h3><p>${t("Informação usada nos documentos e preferências globais.")}</p>
                         <div class="form-grid">
+                            <label class="field field--full"><span>Nome da missão</span><input name="nome_missao" maxlength="120" value="${attr(settings.nome_missao)}"></label>
                             <label class="field field--full"><span>${t("Nome do COS")}</span><input name="nome_cos" value="${attr(settings.nome_cos)}"></label>
                             <label class="field"><span>${t("Início da Semana 1")}</span><input name="inicio_semana" type="date" value="${attr(settings.inicio_semana)}"></label>
                             <label class="field"><span>${t("Língua")}</span><select name="lingua"><option value="pt" ${settings.lingua === "pt" ? "selected" : ""}>${t("Português")}</option><option value="en" ${settings.lingua === "en" ? "selected" : ""}>English</option></select></label>
@@ -2504,7 +2546,7 @@
                 try {
                     const body = {
                         valor_welfare: form.get("valor_welfare"), valor_caixa: form.get("valor_caixa"),
-                        nome_cos: form.get("nome_cos"), inicio_semana: form.get("inicio_semana"),
+                        nome_missao: form.get("nome_missao"), nome_cos: form.get("nome_cos"), inicio_semana: form.get("inicio_semana"),
                         lingua: form.get("lingua"), horario_dfac: horario,
                         update_folder: form.get("update_folder"),
                     };
@@ -2723,7 +2765,8 @@
             <form id="password-form" class="form-grid">
                 <label class="field"><span class="required">${t("Nova password")}</span><input type="password" name="password" autocomplete="new-password" required></label>
                 <label class="field"><span class="required">${t("Confirmar password")}</span><input type="password" name="confirmar" autocomplete="new-password" required></label>
-            </form>`,
+            </form>
+            ${user.snr ? `<label class="checkbox profile-digital-validation"><input type="checkbox" id="profile-digital-validation" ${user.validacao_digital_leave ? "checked" : ""}> Validação digital do documento "Application Form For Leave"</label>` : ""}`,
             footer: `<button class="btn btn--secondary" data-modal-close>${t("Fechar")}</button><button class="btn btn--primary" type="submit" form="password-form">${icon("check")} ${t("Alterar password")}</button>`,
             onOpen(modal) {
                 $("#password-form", modal).addEventListener("submit", async (event) => {
@@ -2734,6 +2777,15 @@
                         const response = await api("/api/profile/password", {method: "PUT", body});
                         closeModal(); toast(response.message);
                     } catch (error) { toast(error.message, "error"); }
+                    finally { setLoading(false); }
+                });
+                $("#profile-digital-validation", modal)?.addEventListener("change", async (event) => {
+                    setLoading(true);
+                    try {
+                        const response = await api("/api/profile/leave-digital-validation", {method: "PUT", body: {ativo: event.currentTarget.checked}});
+                        state.boot.user.validacao_digital_leave = response.ativo;
+                        toast(response.message);
+                    } catch (error) { event.currentTarget.checked = !event.currentTarget.checked; toast(error.message, "error"); }
                     finally { setLoading(false); }
                 });
             },
@@ -3053,6 +3105,9 @@
         }
         else if (action === "vacation-update-hours") {
             const period = findVacation(target.dataset.id); if (period) openVacationHoursModal(period);
+        }
+        else if (action === "vacation-leave-form") {
+            openLeaveApplicationModal(target.dataset.id);
         }
         else if (action === "my-vacation-tab") {
             state.myVacationTab = target.dataset.tab;

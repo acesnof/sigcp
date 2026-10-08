@@ -265,7 +265,7 @@ def _draw_day_cell(c, dia, welfares_dia, x, y, w, h, bg, is_day_off=False):
         )
 
 
-def gerar_pdf_mes(ano, mes, output_path=None):
+def gerar_pdf_mes(ano, mes, output_path=None, mission_name=""):
     nome_mes = MESES_PT[mes]
     if output_path is None:
         os.makedirs(PDF_DIR, exist_ok=True)
@@ -276,7 +276,8 @@ def gerar_pdf_mes(ano, mes, output_path=None):
 
     c = canvas.Canvas(output_path, pagesize=landscape(A4))
     c.setTitle(f"SIGCP - {nome_mes} {ano}")
-    c.setAuthor("Contingente Português · EUTM RCA")
+    mission_name = str(mission_name or "EUTM RCA").strip().upper()
+    c.setAuthor(f"Contingente Português · {mission_name}")
 
     left = margem
     bottom = margem
@@ -332,7 +333,7 @@ def gerar_pdf_mes(ano, mes, output_path=None):
     c.drawString(
         title_x,
         header_y + header_h - 9,
-        "CONTINGENTE PORTUGUÊS · EUTM RCA",
+        f"CONTINGENTE PORTUGUÊS · {mission_name}",
     )
     c.setFillColor(COR_PRINCIPAL)
     c.setFont("Helvetica-Bold", 11.5)

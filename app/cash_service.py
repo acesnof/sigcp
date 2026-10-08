@@ -107,7 +107,7 @@ def dashboard_summary(today=None):
     return {"data": today, "saldo": current, "entradas": entries, "saidas": exits}
 
 
-def generate_pdf(start, end, output_path):
+def generate_pdf(start, end, output_path, mission_name=""):
     report = balance(start, end)
     styles = getSampleStyleSheet()
     normal = ParagraphStyle("cash-normal", parent=styles["Normal"], fontSize=7, leading=8.5)
@@ -116,7 +116,8 @@ def generate_pdf(start, end, output_path):
     title = ParagraphStyle("cash-title", parent=styles["Normal"], fontName="Helvetica-Bold", fontSize=13, textColor=colors.HexColor("#073f46"))
     eyebrow = ParagraphStyle("cash-eyebrow", parent=normal, fontName="Helvetica-Bold", fontSize=6, textColor=colors.HexColor("#587077"))
     doc = SimpleDocTemplate(output_path, pagesize=landscape(A4), leftMargin=10*mm, rightMargin=10*mm, topMargin=9*mm, bottomMargin=9*mm, title="Balanço da Caixa")
-    header = Table([["", [Paragraph("CONTINGENTE PORTUGUÊS · EUTM RCA", eyebrow), Paragraph("BALANÇO DA CAIXA", title)], Paragraph(f"{start[8:10]}/{start[5:7]}/{start[:4]} — {end[8:10]}/{end[5:7]}/{end[:4]}", center)]], colWidths=[1.5*mm, 205.5*mm, 70*mm], rowHeights=[14*mm])
+    mission_name = escape(str(mission_name or "EUTM RCA").strip().upper())
+    header = Table([["", [Paragraph(f"CONTINGENTE PORTUGUÊS · {mission_name}", eyebrow), Paragraph("BALANÇO DA CAIXA", title)], Paragraph(f"{start[8:10]}/{start[5:7]}/{start[:4]} — {end[8:10]}/{end[5:7]}/{end[:4]}", center)]], colWidths=[1.5*mm, 205.5*mm, 70*mm], rowHeights=[14*mm])
     header.setStyle(TableStyle([("BACKGROUND",(0,0),(0,0),colors.HexColor("#b51618")),("BACKGROUND",(2,0),(2,0),colors.HexColor("#f4f8f8")),("BOX",(2,0),(2,0),.5,colors.HexColor("#cfe0e2")),("VALIGN",(0,0),(-1,-1),"MIDDLE"),("LEFTPADDING",(1,0),(1,0),10)]))
     summary = Table([["SALDO INICIAL", "ENTRADAS", "SAÍDAS", f"SALDO EM {end[8:10]}/{end[5:7]}/{end[:4]}"], [f"{report['saldo_inicial']:,.2f} XAF", f"{report['total_entradas']:,.2f} XAF", f"{report['total_saidas']:,.2f} XAF", f"{report['saldo_final']:,.2f} XAF"]], colWidths=[69.25*mm]*4)
     summary.setStyle(TableStyle([("BACKGROUND",(0,0),(-1,0),colors.HexColor("#073f46")),("TEXTCOLOR",(0,0),(-1,0),colors.white),("FONTNAME",(0,0),(-1,-1),"Helvetica-Bold"),("ALIGN",(0,0),(-1,-1),"CENTER"),("GRID",(0,0),(-1,-1),.4,colors.HexColor("#cfe0e2")),("TOPPADDING",(0,0),(-1,-1),5),("BOTTOMPADDING",(0,0),(-1,-1),5)]))
